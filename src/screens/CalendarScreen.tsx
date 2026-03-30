@@ -179,7 +179,7 @@ export default function CalendarScreen() {
 
         {/* Selected Date Detail */}
         <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
-          <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#f0eeeb' }}>
+          <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 16, paddingTop: 28, paddingBottom: 28, borderWidth: 1, borderColor: '#f0eeeb' }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <Text style={{ fontSize: 16, fontWeight: '700', color: '#2C2C2A' }}>
@@ -234,8 +234,8 @@ export default function CalendarScreen() {
         {/* Weekly Chart */}
         <View style={{ paddingHorizontal: 20, paddingTop: 18 }}>
           <Text style={{ fontSize: 15, fontWeight: '700', color: '#2C2C2A', marginBottom: 12 }}>이번 주 현황</Text>
-          <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#f0eeeb' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'flex-end', height: 100, gap: 6 }}>
+          <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 16, paddingTop: 28, paddingBottom: 28, borderWidth: 1, borderColor: '#f0eeeb' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-end', height: 100, gap: 6, marginTop: 14, marginTop: 14 }}>
               {weekData.map(w => {
                 const rate = w.rate ?? 0;
                 const h = Math.max(rate * 0.8, 5);
