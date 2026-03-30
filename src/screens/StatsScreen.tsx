@@ -1,3 +1,4 @@
+import { useTheme } from '../constants/ThemeContext';
 import React, { useState, useCallback } from 'react';
 import { View, Text, ScrollView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -22,6 +23,7 @@ function getCatInfo(category: string) {
 }
 
 export default function StatsScreen() {
+  const { colors } = useTheme();
   const ts = today();
   const td = new Date();
   const [streak, setStreak] = useState<any>(null);
@@ -117,23 +119,23 @@ export default function StatsScreen() {
   const getColor = (rate: number) => rate >= 80 ? '#1D9E75' : rate >= 50 ? '#EF9F27' : '#E8789A';
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#FDFCFB' }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={{ paddingHorizontal: 20, paddingTop: 12 }}>
-          <Text style={{ fontSize: 22, fontWeight: '700', color: '#2C2C2A' }}>통계</Text>
-          <Text style={{ fontSize: 12, color: '#888780' }}>{td.getFullYear()}년 {td.getMonth() + 1}월</Text>
+          <Text style={{ fontSize: 22, fontWeight: '700', color: colors.text }}>통계</Text>
+          <Text style={{ fontSize: 12, color: colors.textSec }}>{td.getFullYear()}년 {td.getMonth() + 1}월</Text>
         </View>
 
         {/* Summary Cards */}
         <View style={{ flexDirection: 'row', gap: 9, paddingHorizontal: 20, paddingTop: 14 }}>
           {[
-            { label: '월간 달성률', value: monthRate + '%', icon: '📈', color: '#D4537E' },
-            { label: '현재 스트릭', value: (streak?.current_streak ?? 0) + '일', icon: '🔥', color: '#FF6B35' },
-            { label: '최장 스트릭', value: (streak?.longest_streak ?? 0) + '일', icon: '🏆', color: '#EF9F27' },
+            { label: '월간 달성률', value: monthRate + '%', icon: '📈', color: colors.primary },
+            { label: '현재 스트릭', value: (streak?.current_streak ?? 0) + '일', icon: '🔥', color: colors.streak },
+            { label: '최장 스트릭', value: (streak?.longest_streak ?? 0) + '일', icon: '🏆', color: colors.accent },
           ].map((card, i) => (
-            <View key={i} style={{ flex: 1, padding: 14, borderRadius: 16, backgroundColor: '#fff', borderWidth: 1, borderColor: '#f0eeeb', alignItems: 'center' }}>
+            <View key={i} style={{ flex: 1, padding: 14, borderRadius: 16, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, alignItems: 'center' }}>
               <Text style={{ fontSize: 20 }}>{card.icon}</Text>
-              <Text style={{ fontSize: 10, color: '#888780', marginTop: 4 }}>{card.label}</Text>
+              <Text style={{ fontSize: 10, color: colors.textSec, marginTop: 4 }}>{card.label}</Text>
               <Text style={{ fontSize: 20, fontWeight: '700', color: card.color, marginTop: 2 }}>{card.value}</Text>
             </View>
           ))}
@@ -141,7 +143,7 @@ export default function StatsScreen() {
 
         {/* Badges */}
         <View style={{ paddingHorizontal: 20, paddingTop: 18 }}>
-          <Text style={{ fontSize: 15, fontWeight: '700', color: '#2C2C2A', marginBottom: 10 }}>🏅 달성 뱃지</Text>
+          <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 10 }}>🏅 달성 뱃지</Text>
           <View style={{ flexDirection: 'row', gap: 10 }}>
             {MILESTONES.map(m => {
               const earned = !!badges[String(m.days)];
@@ -155,9 +157,9 @@ export default function StatsScreen() {
                   <Text style={{ fontSize: 32, marginBottom: 6 }}>{m.emoji}</Text>
                   <Text style={{ fontSize: 12, fontWeight: '600', color: earned ? m.color : '#888780' }}>{m.label}</Text>
                   {earned ? (
-                    <Text style={{ fontSize: 10, color: '#888780', marginTop: 3 }}>달성! ✓</Text>
+                    <Text style={{ fontSize: 10, color: colors.textSec, marginTop: 3 }}>달성! ✓</Text>
                   ) : (
-                    <Text style={{ fontSize: 10, color: '#c0bdb8', marginTop: 3 }}>
+                    <Text style={{ fontSize: 10, color: colors.textLight, marginTop: 3 }}>
                       {streak ? `${m.days - streak.current_streak}일 남음` : '미달성'}
                     </Text>
                   )}
@@ -169,8 +171,8 @@ export default function StatsScreen() {
 
         {/* Weekly Chart */}
         <View style={{ paddingHorizontal: 20, paddingTop: 18 }}>
-          <Text style={{ fontSize: 15, fontWeight: '700', color: '#2C2C2A', marginBottom: 10 }}>주간 달성률</Text>
-          <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 16, paddingTop: 28, paddingBottom: 28, borderWidth: 1, borderColor: '#f0eeeb' }}>
+          <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 10 }}>주간 달성률</Text>
+          <View style={{ backgroundColor: colors.card, borderRadius: 16, padding: 16, paddingTop: 28, paddingBottom: 28, borderWidth: 1, borderColor: colors.border }}>
             <View style={{ flexDirection: 'row', alignItems: 'flex-end', height: 130, gap: 6 }}>
               {weekData.map(w => {
                 const h = Math.max((w.rate || 0) * 0.9, 5);
@@ -192,12 +194,12 @@ export default function StatsScreen() {
         {/* Category Breakdown */}
         {catStats.length > 0 && (
           <View style={{ paddingHorizontal: 20, paddingTop: 18 }}>
-            <Text style={{ fontSize: 15, fontWeight: '700', color: '#2C2C2A', marginBottom: 10 }}>카테고리별 달성률</Text>
-            <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 16, paddingTop: 28, paddingBottom: 28, borderWidth: 1, borderColor: '#f0eeeb' }}>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 10 }}>카테고리별 달성률</Text>
+            <View style={{ backgroundColor: colors.card, borderRadius: 16, padding: 16, paddingTop: 28, paddingBottom: 28, borderWidth: 1, borderColor: colors.border }}>
               {catStats.map((cat, i) => (
                 <View key={cat.key} style={{ marginBottom: i < catStats.length - 1 ? 14 : 0 }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
-                    <Text style={{ fontSize: 13, fontWeight: '500', color: '#2C2C2A' }}>{cat.icon} {cat.label}</Text>
+                    <Text style={{ fontSize: 13, fontWeight: '500', color: colors.text }}>{cat.icon} {cat.label}</Text>
                     <Text style={{ fontSize: 12, fontWeight: '600', color: cat.color }}>{cat.rate}%</Text>
                   </View>
                   <View style={{ height: 6, borderRadius: 3, backgroundColor: '#f0eeeb' }}>
@@ -212,17 +214,17 @@ export default function StatsScreen() {
         {/* Most Missed */}
         {missedRoutines.length > 0 && (
           <View style={{ paddingHorizontal: 20, paddingTop: 18 }}>
-            <Text style={{ fontSize: 15, fontWeight: '700', color: '#2C2C2A', marginBottom: 10 }}>자주 빠지는 루틴 😅</Text>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 10 }}>자주 빠지는 루틴 😅</Text>
             {missedRoutines.map((r, i) => {
               const cat = getCatInfo(r.category);
               return (
                 <View key={r.id} style={{
                   flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12,
-                  backgroundColor: '#fff', borderRadius: 12, marginBottom: 8,
-                  borderWidth: 1, borderColor: '#f0eeeb',
+                  backgroundColor: colors.card, borderRadius: 12, marginBottom: 8,
+                  borderWidth: 1, borderColor: colors.border,
                 }}>
                   <Text style={{ fontSize: 16 }}>{cat.icon}</Text>
-                  <Text style={{ flex: 1, fontSize: 13, fontWeight: '500', color: '#2C2C2A' }}>{r.name}</Text>
+                  <Text style={{ flex: 1, fontSize: 13, fontWeight: '500', color: colors.text }}>{r.name}</Text>
                   <View style={{ backgroundColor: getColor(r.rate) + '12', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
                     <Text style={{ fontSize: 11, fontWeight: '600', color: getColor(r.rate) }}>{r.rate}%</Text>
                   </View>
@@ -234,11 +236,11 @@ export default function StatsScreen() {
 
         {/* Streak Protection Info */}
         <View style={{ paddingHorizontal: 20, paddingTop: 18 }}>
-          <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#f0eeeb', flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <View style={{ backgroundColor: colors.card, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             <Text style={{ fontSize: 28 }}>🛡️</Text>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: '#2C2C2A' }}>스트릭 보호권</Text>
-              <Text style={{ fontSize: 11, color: '#888780', marginTop: 2 }}>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }}>스트릭 보호권</Text>
+              <Text style={{ fontSize: 11, color: colors.textSec, marginTop: 2 }}>
                 {streak?.protection_used ? '이번 주 사용 완료' : '이번 주 1회 남음 — 하루 빠져도 스트릭 유지!'}
               </Text>
             </View>

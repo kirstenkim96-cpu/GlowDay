@@ -1,3 +1,4 @@
+import { useTheme } from '../constants/ThemeContext';
 import React, { useState, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,6 +20,7 @@ const haptic = (t: string) => { if (!Haptics) return; Haptics.impactAsync(Haptic
 const MONTHS = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
 
 export default function CalendarScreen() {
+  const { colors } = useTheme();
   const todayStr = today();
   const todayD = new Date();
   const [viewYear, setViewYear] = useState(todayD.getFullYear());
@@ -117,12 +119,12 @@ export default function CalendarScreen() {
   });
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#FDFCFB' }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 12 }}>
-          <TouchableOpacity onPress={prevMonth} style={{ padding: 8 }}><Text style={{ fontSize: 22, color: '#888780' }}>‹</Text></TouchableOpacity>
-          <Text style={{ fontSize: 20, fontWeight: '700', color: '#2C2C2A' }}>{viewYear}년 {MONTHS[viewMonth]}</Text>
+          <TouchableOpacity onPress={prevMonth} style={{ padding: 8 }}><Text style={{ fontSize: 22, color: colors.textSec }}>‹</Text></TouchableOpacity>
+          <Text style={{ fontSize: 20, fontWeight: '700', color: colors.text }}>{viewYear}년 {MONTHS[viewMonth]}</Text>
           <TouchableOpacity onPress={nextMonth} style={{ padding: 8 }}><Text style={{ fontSize: 22, color: viewYear === todayD.getFullYear() && viewMonth >= todayD.getMonth() ? '#e0ded8' : '#888780' }}>›</Text></TouchableOpacity>
         </View>
 
@@ -172,25 +174,25 @@ export default function CalendarScreen() {
           {[{ c: '#1D9E75', l: '80%+' }, { c: '#EF9F27', l: '50-79%' }, { c: '#E8789A', l: '~49%' }].map(x => (
             <View key={x.l} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: x.c }} />
-              <Text style={{ fontSize: 10, color: '#888780' }}>{x.l}</Text>
+              <Text style={{ fontSize: 10, color: colors.textSec }}>{x.l}</Text>
             </View>
           ))}
         </View>
 
         {/* Selected Date Detail */}
         <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
-          <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 16, paddingTop: 28, paddingBottom: 28, borderWidth: 1, borderColor: '#f0eeeb' }}>
+          <View style={{ backgroundColor: colors.card, borderRadius: 16, padding: 16, paddingTop: 28, paddingBottom: 28, borderWidth: 1, borderColor: colors.border }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Text style={{ fontSize: 16, fontWeight: '700', color: '#2C2C2A' }}>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text }}>
                   {parseInt(selParts[1])}월 {parseInt(selParts[2])}일
                 </Text>
-                <Text style={{ fontSize: 12, color: '#888780' }}>
+                <Text style={{ fontSize: 12, color: colors.textSec }}>
                   {DAY_NAMES[new Date(selectedDate + 'T00:00:00').getDay()]}요일
                 </Text>
                 {selectedDate === todayStr && (
-                  <View style={{ backgroundColor: '#D4537E12', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
-                    <Text style={{ fontSize: 10, fontWeight: '600', color: '#D4537E' }}>오늘</Text>
+                  <View style={{ backgroundColor: colors.primaryBg, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                    <Text style={{ fontSize: 10, fontWeight: '600', color: colors.primary }}>오늘</Text>
                   </View>
                 )}
               </View>
@@ -201,7 +203,7 @@ export default function CalendarScreen() {
 
             {selectedRoutines.length === 0 ? (
               <View style={{ alignItems: 'center', paddingVertical: 16 }}>
-                <Text style={{ fontSize: 13, color: '#888780' }}>
+                <Text style={{ fontSize: 13, color: colors.textSec }}>
                   {selectedDate > todayStr ? '아직 지나지 않은 날이에요' : '이 날은 루틴이 없어요'}
                 </Text>
               </View>
@@ -223,7 +225,7 @@ export default function CalendarScreen() {
                     </View>
                   );
                 })}
-                <Text style={{ fontSize: 11, color: '#888780', textAlign: 'center', marginTop: 6 }}>
+                <Text style={{ fontSize: 11, color: colors.textSec, textAlign: 'center', marginTop: 6 }}>
                   {selDone}/{selectedRoutines.length} 완료
                 </Text>
               </View>
@@ -233,8 +235,8 @@ export default function CalendarScreen() {
 
         {/* Weekly Chart */}
         <View style={{ paddingHorizontal: 20, paddingTop: 18 }}>
-          <Text style={{ fontSize: 15, fontWeight: '700', color: '#2C2C2A', marginBottom: 12 }}>이번 주 현황</Text>
-          <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 16, paddingTop: 28, paddingBottom: 28, borderWidth: 1, borderColor: '#f0eeeb' }}>
+          <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 12 }}>이번 주 현황</Text>
+          <View style={{ backgroundColor: colors.card, borderRadius: 16, padding: 16, paddingTop: 28, paddingBottom: 28, borderWidth: 1, borderColor: colors.border }}>
             <View style={{ flexDirection: 'row', alignItems: 'flex-end', height: 100, gap: 6, marginTop: 14, marginTop: 14 }}>
               {weekData.map(w => {
                 const rate = w.rate ?? 0;
