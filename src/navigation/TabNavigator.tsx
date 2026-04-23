@@ -47,7 +47,7 @@ export default function TabNavigator() {
           tabBarButton: (props) => <AddButton onPress={() => { if (props.onPress) { props.onPress({ target: undefined, preventDefault: () => {} } as any); } }} colors={colors} />,
         }}
         listeners={({ navigation }) => ({
-          tabPress: (e) => { e.preventDefault(); navigation.navigate('Add', { editRoutine: null }); },
+          tabPress: (e) => { e.preventDefault(); navigation.navigate('Add', { editRoutine: null, editEvent: null }); },
         })}
       />
       <Tab.Screen name="Stats" component={StatsScreen}
