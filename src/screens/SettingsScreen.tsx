@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Switch, Platform, Modal } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Switch, Platform, Modal, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import GlowModal from '../components/GlowModal';
@@ -10,26 +10,25 @@ const IS_WEB = Platform.OS === 'web';
 let dbFns: any = null;
 let Haptics: any = null;
 let Notifications: any = null;
-if (!IS_WEB) { dbFns = require('../db/database'); Haptics = require('expo-haptics'); try { Notifications = require('expo-notifications'); } catch {} }
+Notifications = null; // Expo Go 미지원
+let Sharing: any = null;
+let FileSystem: any = null;
+if (!IS_WEB) {
+  dbFns = require('../db/database');
+  Haptics = require('expo-haptics');
+  
+  try { Sharing = require('expo-sharing'); } catch {}
+  try { FileSystem = require('expo-file-system'); } catch {}
+}
 const haptic = (t: string) => { if (!Haptics) return; if (t === 'success') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); else if (t === 'medium') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); else Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); };
 
 async function scheduleNotifications(amOn: boolean, pmOn: boolean) {
   if (!Notifications) return;
   try {
     await Notifications.cancelAllScheduledNotificationsAsync();
-    if (amOn) {
-      await Notifications.scheduleNotificationAsync({
-        content: { title: '☀️ 아침 루틴 시간이에요!', body: '오늘도 빛나는 하루를 시작해볼까요?', sound: true },
-        trigger: { hour: 7, minute: 0, repeats: true, type: 'daily' },
-      });
-    }
-    if (pmOn) {
-      await Notifications.scheduleNotificationAsync({
-        content: { title: '🌙 저녁 루틴 시간이에요!', body: '오늘 하루도 수고했어요, 루틴으로 마무리!', sound: true },
-        trigger: { hour: 21, minute: 0, repeats: true, type: 'daily' },
-      });
-    }
-  } catch (e) { console.log('Notification schedule error:', e); }
+    if (amOn) { await Notifications.scheduleNotificationAsync({ content: { title: '☀️ 아침 루틴 시간이에요!', body: '오늘도 빛나는 하루를 시작해볼까요?', sound: true }, trigger: { hour: 7, minute: 0, repeats: true, type: 'daily' } }); }
+    if (pmOn) { await Notifications.scheduleNotificationAsync({ content: { title: '🌙 저녁 루틴 시간이에요!', body: '오늘 하루도 수고했어요, 루틴으로 마무리!', sound: true }, trigger: { hour: 21, minute: 0, repeats: true, type: 'daily' } }); }
+  } catch (e) { console.log('Notification error:', e); }
 }
 
 function SettingRow({ icon, label, sub, right, colors }: any) {
@@ -77,35 +76,44 @@ export default function SettingsScreen() {
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
-  const requestNotifPermission = async () => {
-    if (!Notifications) return true;
-    try {
-      const { status } = await Notifications.requestPermissionsAsync();
-      return status === 'granted';
-    } catch { return false; }
-  };
-
   const toggleNotif = async (type: 'am' | 'pm', value: boolean) => {
     haptic('light');
-    if (value) {
-      const granted = await requestNotifPermission();
-      if (!granted) {
-        setModal({ visible: true, emoji: '🔔', title: '알림 권한이 필요해요', message: '설정에서 알림을 허용해주세요', buttons: [{ text: '확인', onPress: () => setModal((m: any) => ({ ...m, visible: false })), style: 'primary' }] });
-        return;
-      }
+    if (value && Notifications) {
+      try { const { status } = await Notifications.requestPermissionsAsync(); if (status !== 'granted') { setModal({ visible: true, emoji: '🔔', title: '알림 권한이 필요해요', buttons: [{ text: '확인', onPress: () => setModal((m: any) => ({ ...m, visible: false })), style: 'primary' }] }); return; } } catch {}
     }
     const newAm = type === 'am' ? value : amNotif;
     const newPm = type === 'pm' ? value : pmNotif;
     if (type === 'am') setAmNotif(value); else setPmNotif(value);
-    if (!IS_WEB) {
-      await dbFns.setSetting(type === 'am' ? 'am_notif' : 'pm_notif', value ? '1' : '0');
-      await scheduleNotifications(newAm, newPm);
-    }
+    if (!IS_WEB) { await dbFns.setSetting(type === 'am' ? 'am_notif' : 'pm_notif', value ? '1' : '0'); await scheduleNotifications(newAm, newPm); }
   };
 
   const cycleTheme = () => { haptic('light'); setMode(isDark ? 'light' : 'dark'); };
-  const themeLabel = isDark ? '다크 모드' : '라이트 모드';
-  const themeIcon = isDark ? '🌙' : '☀️';
+
+  const handleExportData = async () => {
+    if (IS_WEB) return;
+    haptic('light');
+    try {
+      const allR = await dbFns.getAllRoutines();
+      const allE = await dbFns.getAllEvents();
+      const st = await dbFns.getStreak();
+      const settings: any = {};
+      for (const k of ['nickname', 'profile_emoji', 'accent_color', 'theme_mode', 'am_notif', 'pm_notif']) {
+        settings[k] = await dbFns.getSetting(k);
+      }
+      const backup = JSON.stringify({ routines: allR, events: allE, streak: st, settings }, null, 2);
+
+      if (Sharing && FileSystem && await Sharing.isAvailableAsync()) {
+        const path = FileSystem.documentDirectory + 'glowday_backup.json';
+        await FileSystem.writeAsStringAsync(path, backup);
+        await Sharing.shareAsync(path, { mimeType: 'application/json', dialogTitle: 'GlowDay 백업' });
+      } else {
+        setModal({ visible: true, emoji: '📤', title: '백업 준비 완료', message: '공유 기능을 사용할 수 없어요', buttons: [{ text: '확인', onPress: () => setModal((m: any) => ({ ...m, visible: false })), style: 'primary' }] });
+      }
+    } catch (e) {
+      console.error(e);
+      setModal({ visible: true, emoji: '😥', title: '내보내기 실패', buttons: [{ text: '확인', onPress: () => setModal((m: any) => ({ ...m, visible: false })), style: 'primary' }] });
+    }
+  };
 
   const handleResetStreak = () => {
     setModal({ visible: true, emoji: '🔥', title: '스트릭을 초기화할까요?', buttons: [
@@ -117,7 +125,17 @@ export default function SettingsScreen() {
   const handleResetData = () => {
     setModal({ visible: true, emoji: '⚠️', title: '모든 데이터를 삭제할까요?', message: '루틴, 기록, 스트릭이 전부 사라져요.\n이 작업은 되돌릴 수 없어요.', buttons: [
       { text: '취소', onPress: () => setModal((m: any) => ({ ...m, visible: false })), style: 'default' },
-      { text: '전체 삭제', onPress: async () => { setModal((m: any) => ({ ...m, visible: false })); if (!IS_WEB) { const db = dbFns.getDB(); await db.execAsync('DELETE FROM routine_logs; DELETE FROM routines; DELETE FROM beauty_events; DELETE FROM custom_categories; DELETE FROM settings;'); await dbFns.updateStreak({ current_streak: 0, longest_streak: 0, last_completed_date: '', protection_used: 0, protection_date: null }); if (Notifications) await Notifications.cancelAllScheduledNotificationsAsync(); } haptic('success'); setModal({ visible: true, emoji: '✨', title: '초기화 완료!', buttons: [{ text: '확인', onPress: () => { setModal((m: any) => ({ ...m, visible: false })); load(); }, style: 'primary' }] }); }, style: 'danger' },
+      { text: '전체 삭제', onPress: async () => {
+        setModal((m: any) => ({ ...m, visible: false }));
+        if (!IS_WEB) {
+          const db = dbFns.getDB();
+          await db.execAsync('DELETE FROM routine_logs; DELETE FROM routines; DELETE FROM beauty_events; DELETE FROM custom_categories; DELETE FROM settings;');
+          await dbFns.updateStreak({ current_streak: 0, longest_streak: 0, last_completed_date: '', protection_used: 0, protection_date: null });
+          if (Notifications) await Notifications.cancelAllScheduledNotificationsAsync();
+        }
+        haptic('success');
+        setModal({ visible: true, emoji: '✨', title: '초기화 완료!', buttons: [{ text: '확인', onPress: () => { setModal((m: any) => ({ ...m, visible: false })); load(); }, style: 'primary' }] });
+      }, style: 'danger' },
     ] });
   };
 
@@ -130,7 +148,6 @@ export default function SettingsScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 6 }}><Text style={{ fontSize: 22, fontWeight: '700', color: colors.text }}>설정</Text></View>
 
-        {/* Profile - tappable */}
         <TouchableOpacity onPress={() => { haptic('light'); setShowEditProfile(true); }} activeOpacity={0.7}
           style={{ marginHorizontal: 20, marginTop: 8, padding: 18, borderRadius: 18, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
           <View style={{ width: 50, height: 50, borderRadius: 16, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center' }}>
@@ -144,14 +161,12 @@ export default function SettingsScreen() {
         </TouchableOpacity>
 
         <View style={{ paddingHorizontal: 20 }}>
-          {/* 밝기 설정 */}
           <Text style={{ fontSize: 11, fontWeight: '600', color: colors.textSec, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4, marginTop: 20 }}>밝기 설정</Text>
           <TouchableOpacity onPress={cycleTheme} activeOpacity={0.7}>
-            <SettingRow colors={colors} icon={themeIcon} label="화면 모드" sub={themeLabel}
-              right={<View style={{ backgroundColor: colors.primaryBg, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}><Text style={{ fontSize: 12, fontWeight: '600', color: colors.primary }}>{themeLabel}</Text></View>} />
+            <SettingRow colors={colors} icon={isDark ? '🌙' : '☀️'} label="화면 모드" sub={isDark ? '다크 모드' : '라이트 모드'}
+              right={<View style={{ backgroundColor: colors.primaryBg, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}><Text style={{ fontSize: 12, fontWeight: '600', color: colors.primary }}>{isDark ? '다크 모드' : '라이트 모드'}</Text></View>} />
           </TouchableOpacity>
 
-          {/* 테마 컬러 */}
           <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textSec, marginTop: 14, marginBottom: 10 }}>테마 컬러</Text>
           <View style={{ flexDirection: 'row', gap: 10 }}>
             {ACCENT_KEYS.map(key => {
@@ -168,14 +183,12 @@ export default function SettingsScreen() {
             })}
           </View>
 
-          {/* 알림 */}
           <Text style={{ fontSize: 11, fontWeight: '600', color: colors.textSec, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4, marginTop: 24 }}>알림 설정</Text>
           <SettingRow colors={colors} icon="☀️" label="아침 루틴 알림" sub="매일 07:00"
             right={<Switch value={amNotif} onValueChange={(v) => toggleNotif('am', v)} trackColor={{ false: colors.toggleBg, true: colors.primary + '80' }} thumbColor={amNotif ? colors.primary : '#f4f3f4'} />} />
           <SettingRow colors={colors} icon="🌙" label="저녁 루틴 알림" sub="매일 21:00"
             right={<Switch value={pmNotif} onValueChange={(v) => toggleNotif('pm', v)} trackColor={{ false: colors.toggleBg, true: colors.primary + '80' }} thumbColor={pmNotif ? colors.primary : '#f4f3f4'} />} />
 
-          {/* 스트릭 */}
           <Text style={{ fontSize: 11, fontWeight: '600', color: colors.textSec, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4, marginTop: 20 }}>스트릭</Text>
           <SettingRow colors={colors} icon="🔥" label="현재 스트릭" sub={`${streak?.current_streak ?? 0}일 연속`}
             right={<Text style={{ fontSize: 16, fontWeight: '700', color: colors.streak }}>{streak?.current_streak ?? 0}일</Text>} />
@@ -184,15 +197,17 @@ export default function SettingsScreen() {
           <SettingRow colors={colors} icon="🛡️" label="스트릭 보호권" sub={streak?.protection_used ? '이번 주 사용 완료' : '이번 주 1회 남음'}
             right={<Text style={{ fontSize: 14, fontWeight: '600', color: streak?.protection_used ? colors.textLight : colors.accent }}>{streak?.protection_used ? '0/1' : '1/1'}</Text>} />
 
-          {/* 루틴 */}
           <Text style={{ fontSize: 11, fontWeight: '600', color: colors.textSec, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4, marginTop: 20 }}>루틴 관리</Text>
           <SettingRow colors={colors} icon="📋" label="등록된 루틴"
             right={<Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>{routineCount}개</Text>} />
           <SettingRow colors={colors} icon="📅" label="등록된 일정"
             right={<Text style={{ fontSize: 14, fontWeight: '600', color: colors.textSec }}>{eventCount}개</Text>} />
 
-          {/* 데이터 */}
           <Text style={{ fontSize: 11, fontWeight: '600', color: colors.textSec, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4, marginTop: 20 }}>데이터</Text>
+          <TouchableOpacity onPress={handleExportData} activeOpacity={0.7}>
+            <SettingRow colors={colors} icon="📤" label="데이터 내보내기" sub="JSON 형식 백업"
+              right={<Text style={{ fontSize: 12, color: colors.primary, fontWeight: '500' }}>내보내기 ›</Text>} />
+          </TouchableOpacity>
           <TouchableOpacity onPress={handleResetStreak} activeOpacity={0.7}>
             <SettingRow colors={colors} icon="🔄" label="스트릭 초기화" sub="현재 스트릭만 리셋"
               right={<Text style={{ fontSize: 12, color: colors.danger, fontWeight: '500' }}>초기화 ›</Text>} />

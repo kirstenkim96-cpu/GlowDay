@@ -60,6 +60,7 @@ export async function openDatabase(): Promise<SQLite.SQLiteDatabase> {
   if (db) return db;
   db = await SQLite.openDatabaseAsync('glowday.db');
   await initTables(db);
+  try { await db.execAsync('ALTER TABLE routines ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0'); } catch {}
   console.log('✅ GlowDay DB initialized');
   return db;
 }
@@ -83,6 +84,7 @@ async function initTables(database: SQLite.SQLiteDatabase): Promise<void> {
       icon TEXT DEFAULT '🌸',
       repeat_days TEXT NOT NULL DEFAULT '[0,1,2,3,4,5,6]',
       active INTEGER NOT NULL DEFAULT 1,
+      sort_order INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
@@ -150,7 +152,7 @@ async function initTables(database: SQLite.SQLiteDatabase): Promise<void> {
 export async function getAllRoutines(): Promise<Routine[]> {
   const database = getDB();
   return await database.getAllAsync<Routine>(
-    'SELECT * FROM routines WHERE active = 1 ORDER BY time_slot, created_at'
+    'SELECT * FROM routines WHERE active = 1 ORDER BY time_slot, sort_order, created_at'
   );
 }
 

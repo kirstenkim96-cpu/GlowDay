@@ -14,14 +14,14 @@ let Haptics: any = null;
 if (!IS_WEB) { dbFns = require('../db/database'); catFns = require('../db/categories'); Haptics = require('expo-haptics'); }
 const haptic = (t: string) => { if (!Haptics) return; if (t === 'success') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); else if (t === 'warning') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning); else if (t === 'medium') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); else Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); };
 const SAMPLE = [
-  { id:'r1',name:'클렌징 폼',category:'skincare',time_slot:'AM',repeat_days:'[0,1,2,3,4,5,6]',active:1,icon:'💧',created_at:'' },
-  { id:'r2',name:'토너 바르기',category:'skincare',time_slot:'AM',repeat_days:'[0,1,2,3,4,5,6]',active:1,icon:'💧',created_at:'' },
-  { id:'r3',name:'비타민C 세럼',category:'skincare',time_slot:'AM',repeat_days:'[0,1,2,3,4,5,6]',active:1,icon:'💧',created_at:'' },
-  { id:'r5',name:'비타민D 복용',category:'supplement',time_slot:'AM',repeat_days:'[0,1,2,3,4,5,6]',active:1,icon:'💊',created_at:'' },
-  { id:'r7',name:'더블 클렌징',category:'skincare',time_slot:'PM',repeat_days:'[0,1,2,3,4,5,6]',active:1,icon:'💧',created_at:'' },
-  { id:'r9',name:'아이크림',category:'skincare',time_slot:'PM',repeat_days:'[0,1,2,3,4,5,6]',active:1,icon:'💧',created_at:'' },
-  { id:'r10',name:'유산균 복용',category:'supplement',time_slot:'PM',repeat_days:'[0,1,2,3,4,5,6]',active:1,icon:'💊',created_at:'' },
-  { id:'r12',name:'바디로션',category:'bodycare',time_slot:'PM',repeat_days:'[0,1,2,3,4,5,6]',active:1,icon:'🧴',created_at:'' },
+  { id:'r1',name:'클렌징 폼',category:'skincare',time_slot:'AM',repeat_days:'[0,1,2,3,4,5,6]',active:1,icon:'💧',created_at:'',sort_order:0 },
+  { id:'r2',name:'토너 바르기',category:'skincare',time_slot:'AM',repeat_days:'[0,1,2,3,4,5,6]',active:1,icon:'💧',created_at:'',sort_order:1 },
+  { id:'r3',name:'비타민C 세럼',category:'skincare',time_slot:'AM',repeat_days:'[0,1,2,3,4,5,6]',active:1,icon:'💧',created_at:'',sort_order:2 },
+  { id:'r5',name:'비타민D 복용',category:'supplement',time_slot:'AM',repeat_days:'[0,1,2,3,4,5,6]',active:1,icon:'💊',created_at:'',sort_order:3 },
+  { id:'r7',name:'더블 클렌징',category:'skincare',time_slot:'PM',repeat_days:'[0,1,2,3,4,5,6]',active:1,icon:'💧',created_at:'',sort_order:0 },
+  { id:'r9',name:'아이크림',category:'skincare',time_slot:'PM',repeat_days:'[0,1,2,3,4,5,6]',active:1,icon:'💧',created_at:'',sort_order:1 },
+  { id:'r10',name:'유산균 복용',category:'supplement',time_slot:'PM',repeat_days:'[0,1,2,3,4,5,6]',active:1,icon:'💊',created_at:'',sort_order:2 },
+  { id:'r12',name:'바디로션',category:'bodycare',time_slot:'PM',repeat_days:'[0,1,2,3,4,5,6]',active:1,icon:'🧴',created_at:'',sort_order:3 },
 ];
 function getCatInfo(category: string) {
   try { if (catFns) { const m = catFns.getAllCategoriesMap(); return m[category] || Categories.other; } } catch {}
@@ -51,7 +51,6 @@ export default function HomeScreen() {
   const [newBadge,setNewBadge]=useState<any>(null);
   const nav=useNavigation<any>();
   const ts=today(), td=new Date();
-  const tomorrow=addDays(ts,1);
 
   const load=useCallback(async()=>{
     if(IS_WEB){setRoutines(SAMPLE.filter(r=>JSON.parse(r.repeat_days).includes(td.getDay())));return;}
@@ -60,7 +59,7 @@ export default function HomeScreen() {
       setRoutines(r);setLogs(l);setStreak(s?.current_streak??0);
       const allEvents=await dbFns.getAllEvents();
       const upcoming=allEvents.filter((e:any)=>e.date>=ts).sort((a:any,b:any)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time));
-      setEvents(upcoming);
+      setEvents(upcoming.slice(0, 5));
     }catch(e){console.error(e);}
   },[ts]);
 
@@ -87,9 +86,38 @@ export default function HomeScreen() {
 
   const toggle=async(id:string)=>{haptic('light');if(IS_WEB){setLogs(p=>({...p,[id]:!p[id]}));return;}await dbFns.toggleRoutineLog(id,ts);const nl=await dbFns.getLogsForDate(ts);setLogs(nl);await checkAndUpdateStreak(nl);if(routines.every(r=>nl[r.id])&&routines.length>0){setShowCeleb(true);}};
 
-  const edit=(r:any)=>{haptic('medium');const cat=getCatInfo(r.category);setModal({visible:true,emoji:cat.icon,title:r.name,buttons:[{text:'수정',onPress:()=>{setModal((m:any)=>({...m,visible:false}));nav.navigate('Add',{editRoutine:r});},style:'primary'},{text:'삭제',onPress:async()=>{haptic('warning');setModal((m:any)=>({...m,visible:false}));if(!IS_WEB)await dbFns.deleteRoutine(r.id);load();},style:'danger'},{text:'취소',onPress:()=>setModal((m:any)=>({...m,visible:false})),style:'default'}]});};
+  const moveRoutine = async (routine: any, direction: 'up' | 'down') => {
+    if (IS_WEB) return;
+    haptic('light');
+    const sameSlot = routines.filter(r => r.time_slot === routine.time_slot);
+    const idx = sameSlot.findIndex(r => r.id === routine.id);
+    if ((direction === 'up' && idx === 0) || (direction === 'down' && idx === sameSlot.length - 1)) return;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    const db = dbFns.getDB();
+    await db.runAsync('UPDATE routines SET sort_order = ? WHERE id = ?', [swapIdx, routine.id]);
+    await db.runAsync('UPDATE routines SET sort_order = ? WHERE id = ?', [idx, sameSlot[swapIdx].id]);
+    load();
+  };
 
-  const editEvent=(ev:any)=>{haptic('medium');const cat=(Categories as any)[ev.category]||Categories.other;setModal({visible:true,emoji:cat.icon,title:ev.title,buttons:[{text:'수정',onPress:()=>{setModal((m:any)=>({...m,visible:false}));nav.navigate('Add',{editEvent:ev});},style:'primary'},{text:'삭제',onPress:async()=>{setModal((m:any)=>({...m,visible:false}));if(!IS_WEB)await dbFns.deleteEvent(ev.id);haptic('warning');load();},style:'danger'},{text:'취소',onPress:()=>setModal((m:any)=>({...m,visible:false})),style:'default'}]});};
+  const edit=(r:any)=>{
+    haptic('medium');
+    const cat=getCatInfo(r.category);
+    const sameSlot = routines.filter(x => x.time_slot === r.time_slot);
+    const idx = sameSlot.findIndex(x => x.id === r.id);
+    const canUp = idx > 0;
+    const canDown = idx < sameSlot.length - 1;
+
+    const buttons: any[] = [];
+    if (canUp) buttons.push({ text: '↑ 위로 이동', onPress: () => { setModal((m:any)=>({...m,visible:false})); moveRoutine(r, 'up'); }, style: 'default' });
+    if (canDown) buttons.push({ text: '↓ 아래로 이동', onPress: () => { setModal((m:any)=>({...m,visible:false})); moveRoutine(r, 'down'); }, style: 'default' });
+    buttons.push({ text: '수정', onPress: () => { setModal((m:any)=>({...m,visible:false})); nav.navigate('Add',{editRoutine:r}); }, style: 'primary' });
+    buttons.push({ text: '삭제', onPress: async () => { haptic('warning'); setModal((m:any)=>({...m,visible:false})); if(!IS_WEB) await dbFns.deleteRoutine(r.id); load(); }, style: 'danger' });
+    buttons.push({ text: '취소', onPress: () => setModal((m:any)=>({...m,visible:false})), style: 'default' });
+
+    setModal({ visible:true, emoji:cat.icon, title:r.name, buttons });
+  };
+
+  const editEvent=(ev:any)=>{haptic('medium');const cat=(Categories as any)[ev.category]||Categories.other;setModal({visible:true,emoji:cat.icon,title:ev.title,buttons:[{text:'수정',onPress:()=>{setModal((m:any)=>({...m,visible:false}));nav.navigate('Add',{editEvent:ev});},style:'primary'},{text:'삭제',onPress:async()=>{haptic('warning');setModal((m:any)=>({...m,visible:false}));if(!IS_WEB)await dbFns.deleteEvent(ev.id);load();},style:'danger'},{text:'취소',onPress:()=>setModal((m:any)=>({...m,visible:false})),style:'default'}]});};
 
   const am=routines.filter(r=>r.time_slot==='AM'),pm=routines.filter(r=>r.time_slot==='PM');
   const cur=slot==='AM'?am:pm;
@@ -101,53 +129,44 @@ export default function HomeScreen() {
     <CelebrationModal visible={showCeleb} onClose={()=>setShowCeleb(false)} doneCount={da} totalCount={ta} streak={streak}/>
     <GlowModal visible={!!newBadge} emoji={newBadge?.emoji} title={'🎊 뱃지 획득!'} message={newBadge?.label+' 달성!\n축하해요!'} buttons={[{text:'멋져요!',onPress:()=>setNewBadge(null),style:'primary'}]} onClose={()=>setNewBadge(null)}/>
     <ScrollView showsVerticalScrollIndicator={false}>
-      {/* Header */}
       <View style={{flexDirection:'row',justifyContent:'space-between',paddingHorizontal:20,paddingTop:12}}>
         <View><Text style={{fontSize:12,color:colors.textSec}}>{td.getFullYear()}년 {td.getMonth()+1}월 {td.getDate()}일 {DAY_NAMES[td.getDay()]}요일</Text><Text style={{fontSize:22,fontWeight:'700',color:colors.text,marginTop:2}}>오늘의 루틴</Text></View>
         <View style={{flexDirection:'row',alignItems:'center',gap:5,backgroundColor:colors.streakBg,paddingHorizontal:12,paddingVertical:7,borderRadius:18}}><Text style={{fontSize:20}}>🔥</Text><View><Text style={{fontSize:17,fontWeight:'700',color:colors.streak}}>{streak}</Text><Text style={{fontSize:8,color:colors.textSec,marginTop:-2}}>일 연속</Text></View></View>
       </View>
-
-      {/* Progress */}
       <View style={{marginHorizontal:20,marginTop:14,padding:18,borderRadius:20,backgroundColor:colors.primary,flexDirection:'row',alignItems:'center',gap:14,overflow:'hidden',position:'relative'}}>
         <View style={{position:'absolute',right:-20,top:-20,width:70,height:70,borderRadius:35,backgroundColor:'rgba(255,255,255,0.1)'}}/>
         <View style={{width:52,height:52,borderRadius:26,borderWidth:4,borderColor:'rgba(255,255,255,0.3)',backgroundColor:'rgba(255,255,255,0.1)',justifyContent:'center',alignItems:'center'}}><Text style={{fontSize:14,fontWeight:'700',color:'#fff'}}>{pct}%</Text></View>
         <View style={{flex:1}}><Text style={{fontSize:15,fontWeight:'600',color:'#fff'}}>{pct===100?'완벽한 하루! ✨':pct>=80?'거의 다 했어요! 💪':pct>=50?'절반 넘었어요!':'오늘도 화이팅! 🌸'}</Text><Text style={{fontSize:12,color:'rgba(255,255,255,0.8)',marginTop:3}}>전체 {da}/{ta} 완료</Text><View style={{height:4,borderRadius:2,backgroundColor:'rgba(255,255,255,0.2)',marginTop:8}}><View style={{width:pct+'%',height:'100%',borderRadius:2,backgroundColor:'#fff'}}/></View></View>
       </View>
-
-      {/* AM/PM Toggle */}
       <View style={{flexDirection:'row',marginHorizontal:20,marginTop:16,backgroundColor:colors.toggleBg,borderRadius:12,padding:3}}>
         {(['AM','PM'] as const).map(s=>{const a=slot===s;return(<TouchableOpacity key={s} onPress={()=>{haptic('light');setSlot(s);}} activeOpacity={0.7} style={{flex:1,flexDirection:'row',alignItems:'center',justifyContent:'center',paddingVertical:10,borderRadius:10,gap:5,backgroundColor:a?colors.card:'transparent',...(a?{shadowColor:'#000',shadowOffset:{width:0,height:1},shadowOpacity:0.06,shadowRadius:4,elevation:1}:{})}}><Text style={{fontSize:14}}>{s==='AM'?'☀️':'🌙'}</Text><Text style={{fontSize:13,fontWeight:'600',color:a?colors.primary:colors.textSec}}>{s==='AM'?'아침':'저녁'}</Text><View style={{backgroundColor:a?colors.primaryBg:colors.border,paddingHorizontal:6,paddingVertical:2,borderRadius:6}}><Text style={{fontSize:11,fontWeight:'600',color:a?colors.primary:colors.textSec}}>{ds(s)}/{(s==='AM'?am:pm).length}</Text></View></TouchableOpacity>);})}
       </View>
-
-      {/* Routine List */}
       <View style={{paddingHorizontal:20,paddingTop:12}}>
         {cur.length===0?(<View style={{alignItems:'center',paddingVertical:40,gap:8}}><Text style={{fontSize:40}}>{slot==='AM'?'☀️':'🌙'}</Text><Text style={{fontSize:14,color:colors.textSec}}>{slot==='AM'?'아침':'저녁'} 루틴이 없어요</Text><TouchableOpacity onPress={()=>nav.navigate('Add',{editRoutine:null})} style={{marginTop:8,backgroundColor:colors.primaryBg,paddingHorizontal:20,paddingVertical:10,borderRadius:12}}><Text style={{fontSize:13,fontWeight:'600',color:colors.primary}}>+ 루틴 추가하기</Text></TouchableOpacity></View>):(cur.map(r=>(<RoutineCard key={r.id} name={r.name} category={r.category} done={!!logs[r.id]} onToggle={()=>toggle(r.id)} onEdit={()=>edit(r)} colors={colors}/>)))}
       </View>
-
-      {/* Beauty Events */}
       {events.length > 0 && (
         <View style={{paddingHorizontal:20,paddingTop:8}}>
           <Text style={{fontSize:16,fontWeight:'700',color:colors.text,marginBottom:10}}>📌 뷰티 일정</Text>
           {events.map(ev => {
             const cat = (Categories as any)[ev.category] || Categories.other;
             const isToday = ev.date === ts;
+            const evDate = ev.date === ts ? '오늘' : ev.date === addDays(ts,1) ? '내일' : ev.date.slice(5).replace('-','/');
             return (
               <TouchableOpacity key={ev.id} onPress={() => editEvent(ev)} activeOpacity={0.7}
                 style={{flexDirection:'row',alignItems:'center',gap:12,padding:13,backgroundColor:colors.card,borderRadius:14,marginBottom:8,borderWidth:1,borderColor:colors.border}}>
                 <View style={{width:42,height:42,borderRadius:12,backgroundColor:cat.color+'15',justifyContent:'center',alignItems:'center'}}><Text style={{fontSize:20}}>{cat.icon}</Text></View>
                 <View style={{flex:1}}>
                   <Text style={{fontSize:14,fontWeight:'500',color:colors.text}}>{ev.title}</Text>
-                  <Text style={{fontSize:11,color:colors.textSec,marginTop:1}}>{isToday?'오늘':'내일'} {ev.time}{ev.memo?' · '+ev.memo:''}</Text>
+                  <Text style={{fontSize:11,color:colors.textSec,marginTop:1}}>{evDate} {ev.time}{ev.memo?' · '+ev.memo:''}</Text>
                 </View>
                 <View style={{backgroundColor:isToday?colors.primaryBg:colors.toggleBg,paddingHorizontal:8,paddingVertical:3,borderRadius:6}}>
-                  <Text style={{fontSize:10,fontWeight:'600',color:isToday?colors.primary:colors.textSec}}>{isToday?'오늘':'내일'}</Text>
+                  <Text style={{fontSize:10,fontWeight:'600',color:isToday?colors.primary:colors.textSec}}>{evDate}</Text>
                 </View>
               </TouchableOpacity>
             );
           })}
         </View>
       )}
-
       <View style={{height:40}}/>
     </ScrollView>
   </SafeAreaView>);
