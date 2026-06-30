@@ -28,7 +28,7 @@ export default function OnboardingScreen({ onComplete }: Props) {
     ]).start();
   }, [step]);
 
-  const goNext = () => { scaleAnim.setValue(0.9); fadeAnim.setValue(0); setStep(1); };
+  const goNext = () => { if (Haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); scaleAnim.setValue(0.9); fadeAnim.setValue(0); setStep(1); };
 
   const handleComplete = async () => {
     if (!nickname.trim()) return;

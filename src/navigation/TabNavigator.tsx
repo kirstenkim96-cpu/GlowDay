@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { View, TouchableOpacity, Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import HomeScreen from '../screens/HomeScreen';
@@ -8,6 +8,10 @@ import AddScreen from '../screens/AddScreen';
 import StatsScreen from '../screens/StatsScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import { useTheme } from '../constants/ThemeContext';
+
+let Haptics: any = null;
+if (Platform.OS !== 'web') { try { Haptics = require('expo-haptics'); } catch {} }
+const tap = () => { if (Haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); };
 
 const Tab = createBottomTabNavigator();
 
@@ -38,21 +42,25 @@ export default function TabNavigator() {
       }}
     >
       <Tab.Screen name="Home" component={HomeScreen}
+        listeners={{ tabPress: tap }}
         options={{ tabBarLabel: '홈', tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" size={size} color={color} /> }} />
       <Tab.Screen name="Calendar" component={CalendarScreen}
+        listeners={{ tabPress: tap }}
         options={{ tabBarLabel: '캘린더', tabBarIcon: ({ color, size }) => <Ionicons name="calendar-outline" size={size} color={color} /> }} />
       <Tab.Screen name="Add" component={AddScreen}
         options={{
           tabBarLabel: '',
-          tabBarButton: (props) => <AddButton onPress={() => { if (props.onPress) { props.onPress({ target: undefined, preventDefault: () => {} } as any); } }} colors={colors} />,
+          tabBarButton: (props) => <AddButton onPress={() => { tap(); if (props.onPress) { props.onPress({ target: undefined, preventDefault: () => {} } as any); } }} colors={colors} />,
         }}
         listeners={({ navigation }) => ({
-          tabPress: (e) => { e.preventDefault(); navigation.navigate('Add', { editRoutine: null, editEvent: null }); },
+          tabPress: (e) => { e.preventDefault(); tap(); navigation.navigate('Add', { editRoutine: null, editEvent: null }); },
         })}
       />
       <Tab.Screen name="Stats" component={StatsScreen}
+        listeners={{ tabPress: tap }}
         options={{ tabBarLabel: '통계', tabBarIcon: ({ color, size }) => <Ionicons name="bar-chart-outline" size={size} color={color} /> }} />
       <Tab.Screen name="Settings" component={SettingsScreen}
+        listeners={{ tabPress: tap }}
         options={{ tabBarLabel: '설정', tabBarIcon: ({ color, size }) => <Ionicons name="settings-outline" size={size} color={color} /> }} />
     </Tab.Navigator>
   );

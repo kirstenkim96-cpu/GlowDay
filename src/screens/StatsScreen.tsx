@@ -141,33 +141,6 @@ export default function StatsScreen() {
           ))}
         </View>
 
-        {/* Badges */}
-        <View style={{ paddingHorizontal: 20, paddingTop: 18 }}>
-          <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 10 }}>🏅 달성 뱃지</Text>
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            {MILESTONES.map(m => {
-              const earned = !!badges[String(m.days)];
-              return (
-                <View key={m.days} style={{
-                  flex: 1, padding: 16, borderRadius: 16, alignItems: 'center',
-                  backgroundColor: earned ? m.bg : '#f8f7f5',
-                  borderWidth: 1.5, borderColor: earned ? m.color : '#e8e6e3',
-                  opacity: earned ? 1 : 0.5,
-                }}>
-                  <Text style={{ fontSize: 32, marginBottom: 6 }}>{m.emoji}</Text>
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: earned ? m.color : '#888780' }}>{m.label}</Text>
-                  {earned ? (
-                    <Text style={{ fontSize: 10, color: colors.textSec, marginTop: 3 }}>달성! ✓</Text>
-                  ) : (
-                    <Text style={{ fontSize: 10, color: colors.textLight, marginTop: 3 }}>
-                      {streak ? `${m.days - streak.current_streak}일 남음` : '미달성'}
-                    </Text>
-                  )}
-                </View>
-              );
-            })}
-          </View>
-        </View>
 
         {/* Weekly Chart */}
         <View style={{ paddingHorizontal: 20, paddingTop: 18 }}>
