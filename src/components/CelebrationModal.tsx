@@ -64,13 +64,10 @@ export default function CelebrationModal({ visible, onClose, doneCount, totalCou
       if (Haptics) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Animated.parallel([
         Animated.spring(scaleAnim, { toValue: 1, tension: 50, friction: 7, useNativeDriver: true }),
-        Animated.timing(fadeAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
-      ]).start(() => {
-        Animated.sequence([
-          Animated.spring(emojiScale, { toValue: 1, tension: 60, friction: 5, useNativeDriver: true }),
-          Animated.spring(cardSlide, { toValue: 0, tension: 50, friction: 8, useNativeDriver: true }),
-        ]).start();
-      });
+        Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+        Animated.spring(emojiScale, { toValue: 1, delay: 150, tension: 70, friction: 5, useNativeDriver: true }),
+        Animated.spring(cardSlide, { toValue: 0, delay: 200, tension: 50, friction: 8, useNativeDriver: true }),
+      ]).start();
     }
   }, [visible]);
 

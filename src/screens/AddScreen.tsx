@@ -72,7 +72,7 @@ export default function AddScreen() {
     if (!cat || !name.trim()) { setModal({ visible: true, emoji: '📝', title: '카테고리와 이름을 입력해주세요', buttons: [{ text: '확인', onPress: () => setModal((m: any) => ({ ...m, visible: false })), style: 'primary' }] }); return; }
     if (days.length === 0) { setModal({ visible: true, emoji: '📅', title: '반복 요일을 선택해주세요', buttons: [{ text: '확인', onPress: () => setModal((m: any) => ({ ...m, visible: false })), style: 'primary' }] }); return; }
     if (!IS_WEB) { const c = allCatsMap[cat] || { icon: '🌸' }; if (isEditRoutine) { await dbFns.updateRoutine(er.id, { name: name.trim(), category: cat, time_slot: ts, icon: c.icon, repeat_days: JSON.stringify(days) }); } else { await dbFns.addRoutine({ id: 'r_' + Date.now(), name: name.trim(), category: cat, time_slot: ts, icon: c.icon, repeat_days: JSON.stringify(days), active: 1 }); } }
-    haptic('success'); setModal({ visible: true, emoji: isEditRoutine ? '✅' : '✨', title: isEditRoutine ? '수정 완료!' : '루틴 추가 완료!', buttons: [{ text: '확인', onPress: () => { setModal((m: any) => ({ ...m, visible: false })); nav.navigate('Home'); }, style: 'primary' }] });
+    haptic('success'); setModal({ visible: true, emoji: isEditRoutine ? '✅' : '✨', title: isEditRoutine ? '수정 완료!' : '루틴 추가 완료!', buttons: [{ text: '확인', onPress: () => { setModal((m: any) => ({ ...m, visible: false })); setCat(''); setName(''); setTs('AM'); setDays([0,1,2,3,4,5,6]); nav.navigate('Home'); }, style: 'primary' }] });
   };
 
   const saveEvent = async () => {
@@ -86,7 +86,7 @@ export default function AddScreen() {
       }
     }
     haptic('success');
-    setModal({ visible: true, emoji: '📅', title: isEditEvent ? '일정 수정 완료!' : '일정 추가 완료!', buttons: [{ text: '확인', onPress: () => { setModal((m: any) => ({ ...m, visible: false })); setEvTitle(''); setEvMemo(''); nav.navigate('Home'); }, style: 'primary' }] });
+    setModal({ visible: true, emoji: '📅', title: isEditEvent ? '일정 수정 완료!' : '일정 추가 완료!', buttons: [{ text: '확인', onPress: () => { setModal((m: any) => ({ ...m, visible: false })); setEvCat('salon'); setEvTitle(''); setEvDate(today()); setEvTime('14:00'); setEvMemo(''); nav.navigate('Home'); }, style: 'primary' }] });
   };
 
   const delRoutine = () => { if (!isEditRoutine) return; setModal({ visible: true, emoji: '🗑️', title: '"' + er.name + '" 삭제할까요?', buttons: [{ text: '취소', onPress: () => setModal((m: any) => ({ ...m, visible: false })), style: 'default' }, { text: '삭제', onPress: async () => { setModal((m: any) => ({ ...m, visible: false })); if (!IS_WEB) await dbFns.deleteRoutine(er.id); haptic('medium'); nav.navigate('Home'); }, style: 'danger' }] }); };

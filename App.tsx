@@ -28,21 +28,37 @@ function AppContent() {
   const [error, setError] = useState<string | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [status, setStatus] = useState('시작 중...');
 
   useEffect(() => {
     if (Platform.OS === 'web') { setChecking(false); return; }
     async function init() {
       try {
+        setStatus('DB 열기...');
+        console.log('Step 1: Opening DB...');
         const db = await openDatabase();
+        console.log('Step 2: DB opened');
+        
+        setStatus('카테고리 설정...');
+        console.log('Step 3: Setting up categories...');
         await setupCategories(db);
+        console.log('Step 4: Categories done');
+        
+        setStatus('데이터 로드...');
+        console.log('Step 5: Loading all data...');
         await loadAll();
+        console.log('Step 6: Data loaded');
+        
         setReady(true);
+        
+        setStatus('온보딩 체크...');
         const done = await getSetting('onboarding_done');
         if (!done) setShowOnboarding(true);
         setChecking(false);
-      } catch (err) {
+        console.log('Step 7: Init complete');
+      } catch (err: any) {
         console.error('Init failed:', err);
-        setError(String(err));
+        setError(err?.message || String(err));
         setChecking(false);
       }
     }
@@ -53,9 +69,18 @@ function AppContent() {
     return (
       <View style={[styles.loading, { backgroundColor: colors.bg }]}>
         {error ? (
-          <><Text style={{ fontSize: 48 }}>😥</Text><Text style={{ fontSize: 18, fontWeight: '600', color: colors.text, marginTop: 8 }}>앱 초기화 실패</Text></>
+          <>
+            <Text style={{ fontSize: 48 }}>😥</Text>
+            <Text style={{ fontSize: 18, fontWeight: '600', color: colors.text, marginTop: 8 }}>앱 초기화 실패</Text>
+            <Text style={{ fontSize: 12, color: colors.textSec, marginTop: 8, paddingHorizontal: 40, textAlign: 'center' }}>{error}</Text>
+          </>
         ) : (
-          <><Text style={{ fontSize: 48 }}>🌸</Text><Text style={{ fontSize: 28, fontWeight: '700', color: colors.primary, marginTop: 8 }}>GlowDay</Text><ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 16 }} /></>
+          <>
+            <Text style={{ fontSize: 48 }}>🌸</Text>
+            <Text style={{ fontSize: 28, fontWeight: '700', color: colors.primary, marginTop: 8 }}>GlowDay</Text>
+            <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 16 }} />
+            <Text style={{ fontSize: 11, color: colors.textSec, marginTop: 8 }}>{status}</Text>
+          </>
         )}
       </View>
     );
