@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Platform, KeyboardAvoidingView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { Categories } from '../constants/theme';
@@ -22,6 +22,7 @@ export default function AddScreen() {
   const route = useRoute<any>();
   const er = route.params?.editRoutine || null;
   const ee = route.params?.editEvent || null;
+  const defaultSlot = route.params?.defaultSlot || null;
   const isEditRoutine = !!er;
   const isEditEvent = !!ee;
 
@@ -48,7 +49,7 @@ export default function AddScreen() {
   useEffect(() => {
     if (er) { setMode('routine'); setCat(er.category); setName(er.name); setTs(er.time_slot); setDays(JSON.parse(er.repeat_days)); }
     else if (ee) { setMode('event'); setEvCat(ee.category); setEvTitle(ee.title); setEvDate(ee.date); setEvTime(ee.time); setEvMemo(ee.memo || ''); }
-    else { setCat(''); setName(''); setTs('AM'); setDays([0,1,2,3,4,5,6]); setEvCat('salon'); setEvTitle(''); setEvDate(today()); setEvTime('14:00'); setEvMemo(''); }
+    else { setCat(''); setName(''); setTs(defaultSlot || 'AM'); setDays([0,1,2,3,4,5,6]); setEvCat('salon'); setEvTitle(''); setEvDate(today()); setEvTime('14:00'); setEvMemo(''); }
   }, [er, ee]);
 
   const toggleDay = (d: number) => { haptic('light'); setDays(p => p.includes(d) ? p.filter(x => x !== d) : [...p, d].sort()); };
@@ -69,6 +70,8 @@ export default function AddScreen() {
   };
 
   const saveRoutine = async () => {
+    if (!IS_WEB && !isEditRoutine) { const existing = await dbFns.getAllRoutines(); const dup = existing.find((r) => r.name.trim().toLowerCase() === name.trim().toLowerCase()); if (dup) { setModal({ visible: true, emoji: "⚠️", title: "이미 등록된 루틴이에요", message: name.trim() + " 루틴이 이미 있어요", buttons: [{ text: "확인", onPress: () => setModal((m) => ({ ...m, visible: false })), style: "primary" }] }); return; } }
+    if (!IS_WEB && !isEditRoutine) { const existing = await dbFns.getAllRoutines(); const dup = existing.find((r) => r.name.trim().toLowerCase() === name.trim().toLowerCase()); if (dup) { setModal({ visible: true, emoji: "⚠️", title: "이미 등록된 루틴이에요", message: name.trim() + " 루틴이 이미 있어요", buttons: [{ text: "확인", onPress: () => setModal((m) => ({ ...m, visible: false })), style: "primary" }] }); return; } }
     if (!cat || !name.trim()) { setModal({ visible: true, emoji: '📝', title: '카테고리와 이름을 입력해주세요', buttons: [{ text: '확인', onPress: () => setModal((m: any) => ({ ...m, visible: false })), style: 'primary' }] }); return; }
     if (days.length === 0) { setModal({ visible: true, emoji: '📅', title: '반복 요일을 선택해주세요', buttons: [{ text: '확인', onPress: () => setModal((m: any) => ({ ...m, visible: false })), style: 'primary' }] }); return; }
     if (!IS_WEB) { const c = allCatsMap[cat] || { icon: '🌸' }; if (isEditRoutine) { await dbFns.updateRoutine(er.id, { name: name.trim(), category: cat, time_slot: ts, icon: c.icon, repeat_days: JSON.stringify(days) }); } else { await dbFns.addRoutine({ id: 'r_' + Date.now(), name: name.trim(), category: cat, time_slot: ts, icon: c.icon, repeat_days: JSON.stringify(days), active: 1 }); } }
@@ -97,9 +100,9 @@ export default function AddScreen() {
   const COLORS = getAvailableColors();
   const ICONS = getAvailableIcons();
 
-  return (<SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={['top']}>
+  return (<SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={['top']}><KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
     <GlowModal visible={modal.visible} emoji={modal.emoji} title={modal.title} message={modal.message} buttons={modal.buttons} onClose={() => setModal((m: any) => ({ ...m, visible: false }))} />
-    <ScrollView showsVerticalScrollIndicator={false}>
+    <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 40 }}>
       <View style={{ paddingHorizontal: 20, paddingTop: 12 }}><Text style={{ fontSize: 22, fontWeight: '700', color: colors.text }}>{isEditRoutine ? '루틴 수정' : isEditEvent ? '일정 수정' : '새로 추가'}</Text></View>
 
       {/* Mode Toggle - only when not editing */}
@@ -214,5 +217,5 @@ export default function AddScreen() {
       )}
       <View style={{ height: 60 }} />
     </ScrollView>
-  </SafeAreaView>);
+  </KeyboardAvoidingView></SafeAreaView>);
 }

@@ -21,9 +21,9 @@ export function getAvailableIcons() { return ICONS; }
 
 // Default categories (built-in, cannot delete)
 export const DEFAULT_CATEGORIES: Record<string, { label: string; color: string; icon: string }> = {
-  skincare: { label: '스킨케어', color: '#D4537E', icon: '💧' },
+  skincare: { label: '스킨케어', color: '#D4537E', icon: '🫧' },
   supplement: { label: '영양제', color: '#EF9F27', icon: '💊' },
-  haircare: { label: '헤어케어', color: '#8B5CF6', icon: '✨' },
+  haircare: { label: '헤어케어', color: '#8B5CF6', icon: '🪮' },
   bodycare: { label: '바디케어', color: '#1D9E75', icon: '🧴' },
   salon: { label: '살롱 예약', color: '#F472B6', icon: '💇‍♀️' },
   clinic: { label: '피부과', color: '#06B6D4', icon: '🏥' },

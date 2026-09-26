@@ -60,6 +60,8 @@ export async function openDatabase(): Promise<SQLite.SQLiteDatabase> {
   if (db) return db;
   db = await SQLite.openDatabaseAsync('glowday.db');
   await initTables(db);
+  try { await db.execAsync('CREATE TABLE IF NOT EXISTS cycle_items (id TEXT PRIMARY KEY, name TEXT NOT NULL, icon TEXT DEFAULT "🌸", cycle_days INTEGER NOT NULL DEFAULT 7, last_used TEXT, category TEXT DEFAULT "skincare")'); } catch {}
+  try { await db.execAsync('CREATE TABLE IF NOT EXISTS water_logs (id TEXT PRIMARY KEY, date TEXT NOT NULL, cups INTEGER NOT NULL DEFAULT 0)'); } catch {}
   try { await db.execAsync('ALTER TABLE routines ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0'); } catch {}
   console.log('✅ GlowDay DB initialized');
   return db;
@@ -324,4 +326,49 @@ export async function getCompletionRate(date: string): Promise<number | null> {
   const logs = await getLogsForDate(date);
   const done = routines.filter(r => logs[r.id]).length;
   return Math.round((done / routines.length) * 100);
+}
+
+// Water tracking
+export async function getWaterLog(date: string): Promise<number> {
+  const db = getDB();
+  const row: any = await db.getFirstAsync('SELECT cups FROM water_logs WHERE date = ?', [date]);
+  return row?.cups ?? 0;
+}
+
+export async function setWaterLog(date: string, cups: number): Promise<void> {
+  const db = getDB();
+  await db.runAsync('INSERT OR REPLACE INTO water_logs (id, date, cups) VALUES (?, ?, ?)', ['w_' + date, date, cups]);
+}
+
+// Cycle items
+export async function getAllCycleItems(): Promise<any[]> {
+  const db = getDB();
+  const rows: any[] = await db.getAllAsync('SELECT * FROM cycle_items ORDER BY cycle_days');
+  return rows;
+}
+
+export async function addCycleItem(item: { id: string; name: string; icon: string; cycle_days: number; category: string }): Promise<void> {
+  const db = getDB();
+  await db.runAsync('INSERT INTO cycle_items (id, name, icon, cycle_days, category) VALUES (?, ?, ?, ?, ?)', [item.id, item.name, item.icon, item.cycle_days, item.category]);
+}
+
+export async function markCycleItemUsed(id: string, date: string): Promise<void> {
+  const db = getDB();
+  await db.runAsync('UPDATE cycle_items SET last_used = ? WHERE id = ?', [date, id]);
+}
+
+export async function deleteCycleItem(id: string): Promise<void> {
+  const db = getDB();
+  await db.runAsync('DELETE FROM cycle_items WHERE id = ?', [id]);
+}
+
+export async function updateCycleItem(id: string, updates: { name?: string; icon?: string; cycle_days?: number }): Promise<void> {
+  const db = getDB();
+  const sets: string[] = [];
+  const vals: any[] = [];
+  if (updates.name) { sets.push('name = ?'); vals.push(updates.name); }
+  if (updates.icon) { sets.push('icon = ?'); vals.push(updates.icon); }
+  if (updates.cycle_days) { sets.push('cycle_days = ?'); vals.push(updates.cycle_days); }
+  vals.push(id);
+  await db.runAsync('UPDATE cycle_items SET ' + sets.join(', ') + ' WHERE id = ?', vals);
 }
