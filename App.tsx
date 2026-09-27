@@ -1,11 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, Platform, TextInput } from 'react-native';
 import { NavigationContainer, DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import TabNavigator from './src/navigation/TabNavigator';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import { ThemeProvider, useTheme } from './src/constants/ThemeContext';
 import { Colors } from './src/constants/theme';
+
+// 시스템 폰트 크기 확대 제한 (최대 1.15배)
+if ((Text as any).defaultProps == null) (Text as any).defaultProps = {};
+(Text as any).defaultProps.maxFontSizeMultiplier = 1.15;
+if ((TextInput as any).defaultProps == null) (TextInput as any).defaultProps = {};
+(TextInput as any).defaultProps.maxFontSizeMultiplier = 1.15;
 
 let openDatabase: any = null;
 let loadAll: any = null;

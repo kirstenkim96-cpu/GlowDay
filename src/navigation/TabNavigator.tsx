@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, TouchableOpacity, Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import HomeScreen from '../screens/HomeScreen';
 import CalendarScreen from '../screens/CalendarScreen';
@@ -27,13 +28,15 @@ function AddButton({ onPress, colors }: any) {
 
 export default function TabNavigator() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+  const bottomPad = Math.max(insets.bottom, 10);
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          height: Platform.OS === 'ios' ? 88 : 70,
-          paddingTop: 8, paddingBottom: Platform.OS === 'ios' ? 28 : 10,
+          height: 60 + bottomPad,
+          paddingTop: 8, paddingBottom: bottomPad,
           backgroundColor: colors.bg, borderTopColor: colors.border, borderTopWidth: 1,
         },
         tabBarActiveTintColor: colors.primary,
