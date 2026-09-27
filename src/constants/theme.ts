@@ -45,13 +45,13 @@ export const Colors = {
 
 // ─── 카테고리 ────────────────────────────────────────────
 export const Categories = {
-  skincare: { label: '스킨케어', color: '#D4537E', icon: '🫧', emoji: 'bubbles' },
+  skincare: { label: '스킨케어', color: '#D4537E', icon: '💧', emoji: 'water' },
   supplement: { label: '영양제', color: '#EF9F27', icon: '💊', emoji: 'pill' },
   haircare: { label: '헤어케어', color: '#8B5CF6', icon: '✨', emoji: 'sparkles' },
   bodycare: { label: '바디케어', color: '#1D9E75', icon: '🧴', emoji: 'lotion' },
   salon: { label: '살롱 예약', color: '#F472B6', icon: '💇‍♀️', emoji: 'cut' },
-  clinic: { label: '피부과', color: '#06B6D4', icon: '🏥', emoji: 'hospital' },
-  other: { label: '기타', color: '#94A3B8', icon: '🌸', emoji: 'blossom' },
+  clinic: { label: '병원', color: '#06B6D4', icon: '🏥', emoji: 'hospital' },
+  other: { label: '기타', color: '#94A3B8', icon: '🎸', emoji: 'guitar' },
 } as const;
 
 export type CategoryKey = keyof typeof Categories;
