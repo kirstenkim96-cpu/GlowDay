@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Platform, ScrollView, Animated } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Platform, ScrollView, Animated, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../constants/ThemeContext';
 
@@ -9,7 +9,22 @@ let Haptics: any = null;
 if (!IS_WEB) { dbFns = require('../db/database'); Haptics = require('expo-haptics'); }
 const haptic = (t: string) => { if (!Haptics) return; if (t === 'success') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); else Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); };
 
-const PROFILE_EMOJIS = ['🌸','🌷','🌹','🌻','🌺','💐','🪷','🌿','🍀','🌙','⭐','✨','💎','👑','🦋','🐰','🐱','🐻','🎀','💖','💜','💙','🧸','🍓','🍑','🫐','🧁','☕','🔥','⚡','🏋️','🎯','🎮','🎧','🏄','🚀','🐺','🦁','🐉','🦅','🎸','🏀','⚽','🏔️','🌊','🍺','🎬','🕶️','💪','🧊','🏎️','♠️','🐸'];
+const PROFILE_EMOJIS = [
+  // 자연/꽃
+  '🌸','🌷','🌹','🌻','🌺','🪷','🌿','🍀','🌙','☀️',
+  // 빛/보석
+  '⭐','✨','💎','👑','🦋','🔥','⚡','🌊','🏔️','🌈',
+  // 동물
+  '🐰','🐱','🐻','🐺','🦁','🐉','🦅','🐸','🦊','🐧',
+  // 하트/감정
+  '💖','💜','💙','🖤','🤍','💪','🧊','♠️',
+  // 취미/스포츠
+  '🎸','🎮','🎧','🏀','⚽','🏄','🏋️','🏎️','🎯','🎬',
+  // 음식/음료
+  '☕','🍓','🍑','🫐','🍺','🧁',
+  // 기타
+  '🚀','🕶️','🧸','🎀',
+];
 
 interface Props { onComplete: () => void; }
 
@@ -45,7 +60,7 @@ export default function OnboardingScreen({ onComplete }: Props) {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
       {step === 0 ? (
         <Animated.View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40, opacity: fadeAnim, transform: [{ scale: scaleAnim }] }}>
-          <Text style={{ fontSize: 64, marginBottom: 20 }}>🌸</Text>
+          <Image source={require('../../assets/icon.png')} style={{ width: 100, height: 100, borderRadius: 24, marginBottom: 20 }} />
           <Text style={{ fontSize: 28, fontWeight: '700', color: colors.primary, letterSpacing: -0.5, marginBottom: 8 }}>GlowDay</Text>
           <Text style={{ fontSize: 15, color: colors.textSec, textAlign: 'center', lineHeight: 22, marginBottom: 40 }}>
             뷰티 루틴을 캘린더로 관리하고{'\n'}매일 빛나는 하루를 만들어요
@@ -71,11 +86,11 @@ export default function OnboardingScreen({ onComplete }: Props) {
               <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text, marginTop: 12 }}>{nickname || '닉네임을 입력해주세요'}</Text>
             </View>
             <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textSec, marginBottom: 8 }}>닉네임</Text>
-            <TextInput value={nickname} onChangeText={(t) => setNickname(t.slice(0, 12))} placeholder="예: 글로우걸, 빛나는수진" placeholderTextColor={colors.textLight}
+            <TextInput value={nickname} onChangeText={(t) => setNickname(t.slice(0, 12))} placeholder="예: 글로우킹, 빛나는하루" placeholderTextColor={colors.textLight}
               style={{ padding: 16, borderRadius: 14, borderWidth: 1.5, borderColor: colors.border, fontSize: 16, color: colors.text, backgroundColor: colors.card, marginBottom: 6 }} />
             <Text style={{ fontSize: 11, color: colors.textLight, marginBottom: 24, textAlign: 'right' }}>{nickname.length}/12</Text>
             <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textSec, marginBottom: 10 }}>프로필 아이콘</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 32 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 32, justifyContent: 'center' }}>
               {PROFILE_EMOJIS.map(e => (
                 <TouchableOpacity key={e} onPress={() => { haptic('light'); setEmoji(e); }} activeOpacity={0.7}
                   style={{ width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center', backgroundColor: emoji === e ? colors.primaryBg : colors.toggleBg, borderWidth: emoji === e ? 2 : 0, borderColor: colors.primary }}>

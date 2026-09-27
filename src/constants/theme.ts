@@ -45,7 +45,7 @@ export const Colors = {
 
 // ─── 카테고리 ────────────────────────────────────────────
 export const Categories = {
-  skincare: { label: '스킨케어', color: '#D4537E', icon: '💧', emoji: 'water' },
+  skincare: { label: '스킨케어', color: '#D4537E', icon: '🫧', emoji: 'bubbles' },
   supplement: { label: '영양제', color: '#EF9F27', icon: '💊', emoji: 'pill' },
   haircare: { label: '헤어케어', color: '#8B5CF6', icon: '✨', emoji: 'sparkles' },
   bodycare: { label: '바디케어', color: '#1D9E75', icon: '🧴', emoji: 'lotion' },

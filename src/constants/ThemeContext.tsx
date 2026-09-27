@@ -9,7 +9,7 @@ const ACCENTS = {
   navy: { primary: '#2B5EA7', primaryDark: '#5B8FD4', label: '클래식 네이비', emoji: '🌊' },
   green: { primary: '#1D8E65', primaryDark: '#2DBF8E', label: '프레시 그린', emoji: '🌿' },
   purple: { primary: '#7C4DBC', primaryDark: '#A87EDB', label: '라벤더 퍼플', emoji: '💜' },
-  orange: { primary: '#D4732C', primaryDark: '#E8965A', label: '웜 오렌지', emoji: '🔥' },
+  orange: { primary: '#F08C28', primaryDark: '#F5A84C', label: '웜 오렌지', emoji: '🍊' },
 };
 
 function makeColors(isDark: boolean, accent: AccentKey) {

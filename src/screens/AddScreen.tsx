@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Platform, KeyboardAvoidingView } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Platform, KeyboardAvoidingView, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { Categories } from '../constants/theme';
 import { useTheme } from '../constants/ThemeContext';
 import GlowModal from '../components/GlowModal';
 import { DEFAULT_CATEGORIES, getCustomCategories, addCustomCategory, deleteCustomCategory, getAllCategoriesMap, getAvailableColors, getAvailableIcons } from '../db/categories';
-import { today } from '../utils/date';
+import { today, DAY_NAMES, getDaysInMonth, getFirstDayOfMonth } from '../utils/date';
 
 const IS_WEB = Platform.OS === 'web';
 let dbFns: any = null;
@@ -42,6 +42,9 @@ export default function AddScreen() {
   const [evDate, setEvDate] = useState(today());
   const [evTime, setEvTime] = useState('14:00');
   const [evMemo, setEvMemo] = useState('');
+  const [showEvDatePicker, setShowEvDatePicker] = useState(false);
+  const [evPickerYear, setEvPickerYear] = useState(new Date().getFullYear());
+  const [evPickerMonth, setEvPickerMonth] = useState(new Date().getMonth());
 
   const loadCats = () => { if (!IS_WEB) setCustomCats(getCustomCategories()); };
   useFocusEffect(React.useCallback(() => { loadCats(); }, []));
@@ -154,7 +157,7 @@ export default function AddScreen() {
             </View>
           )}
           {cat ? (<>
-            <View style={{ paddingHorizontal: 20, marginTop: 18 }}><Text style={{ fontSize: 12, fontWeight: '600', color: colors.textSec, marginBottom: 6 }}>루틴 이름</Text><TextInput value={name} onChangeText={setName} placeholder="예: 비타민C 세럼 바르기" placeholderTextColor={colors.textLight} style={{ padding: 14, borderRadius: 12, borderWidth: 1.5, borderColor: colors.border, fontSize: 14, color: colors.text, backgroundColor: colors.card }} /></View>
+            <View style={{ paddingHorizontal: 20, marginTop: 18 }}><Text style={{ fontSize: 12, fontWeight: '600', color: colors.textSec, marginBottom: 6 }}>루틴 이름</Text><TextInput value={name} onChangeText={setName} placeholder={cat === "skincare" ? "예: 비타민C 세럼 바르기" : cat === "supplement" ? "예: 유산균 먹기" : cat === "haircare" ? "예: 헤어 오일 바르기" : cat === "bodycare" ? "예: 바디로션 바르기" : "예: 루틴 이름 입력"} placeholderTextColor={colors.textLight} style={{ padding: 14, borderRadius: 12, borderWidth: 1.5, borderColor: colors.border, fontSize: 14, color: colors.text, backgroundColor: colors.card }} /></View>
             <View style={{ paddingHorizontal: 20, marginTop: 18 }}><Text style={{ fontSize: 12, fontWeight: '600', color: colors.textSec, marginBottom: 6 }}>시간대</Text><View style={{ flexDirection: 'row', gap: 10 }}>{(['AM', 'PM'] as const).map(s => (<TouchableOpacity key={s} onPress={() => { haptic('light'); setTs(s); }} activeOpacity={0.7} style={{ flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center', borderWidth: ts === s ? 2 : 1.5, borderColor: ts === s ? colors.primary : colors.border, backgroundColor: ts === s ? colors.primaryBg : colors.card }}><Text style={{ fontSize: 13, fontWeight: '600', color: ts === s ? colors.primary : colors.textSec }}>{s === 'AM' ? '☀️ 아침' : '🌙 저녁'}</Text></TouchableOpacity>))}</View></View>
             <View style={{ paddingHorizontal: 20, marginTop: 18 }}>
               <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textSec, marginBottom: 6 }}>반복 요일</Text>
@@ -184,13 +187,14 @@ export default function AddScreen() {
             })}
           </View>
           <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textSec, marginBottom: 6 }}>일정 이름</Text>
-          <TextInput value={evTitle} onChangeText={setEvTitle} placeholder="예: 네일샵 예약" placeholderTextColor={colors.textLight}
+          <TextInput value={evTitle} onChangeText={setEvTitle} placeholder={evCat === "salon" ? "예: 네일샵 예약" : evCat === "clinic" ? "예: 토닝 3회차" : "예: 마사지 예약"} placeholderTextColor={colors.textLight}
             style={{ padding: 14, borderRadius: 12, borderWidth: 1.5, borderColor: colors.border, fontSize: 14, color: colors.text, backgroundColor: colors.card, marginBottom: 14 }} />
           <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textSec, marginBottom: 6 }}>날짜</Text>
-              <TextInput value={evDate} onChangeText={setEvDate} placeholder="2026-04-22" placeholderTextColor={colors.textLight}
-                style={{ padding: 14, borderRadius: 12, borderWidth: 1.5, borderColor: colors.border, fontSize: 14, color: colors.text, backgroundColor: colors.card }} />
+              <Text style={{ fontSize: 12, fontWeight: "600", color: colors.textSec, marginBottom: 6 }}>날짜</Text>
+              <TouchableOpacity onPress={() => { haptic("light"); setShowEvDatePicker(true); }} style={{ padding: 14, borderRadius: 12, borderWidth: 1.5, borderColor: evDate ? colors.primary : colors.border, backgroundColor: colors.card }}>
+                <Text style={{ fontSize: 14, color: evDate ? colors.text : colors.textLight }}>{evDate || "날짜 선택"}</Text>
+              </TouchableOpacity>
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textSec, marginBottom: 6 }}>시간</Text>
@@ -217,5 +221,29 @@ export default function AddScreen() {
       )}
       <View style={{ height: 60 }} />
     </ScrollView>
+    <Modal visible={showEvDatePicker} transparent animationType="fade">
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.4)" }}>
+        <View style={{ width: 320, backgroundColor: colors.card, borderRadius: 20, padding: 20 }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <TouchableOpacity onPress={() => { haptic("light"); if (evPickerMonth === 0) { setEvPickerYear(evPickerYear - 1); setEvPickerMonth(11); } else setEvPickerMonth(evPickerMonth - 1); }}><Text style={{ fontSize: 18, color: colors.textSec, padding: 8 }}>‹</Text></TouchableOpacity>
+            <Text style={{ fontSize: 16, fontWeight: "700", color: colors.text }}>{evPickerYear}년 {evPickerMonth + 1}월</Text>
+            <TouchableOpacity onPress={() => { haptic("light"); if (evPickerMonth === 11) { setEvPickerYear(evPickerYear + 1); setEvPickerMonth(0); } else setEvPickerMonth(evPickerMonth + 1); }}><Text style={{ fontSize: 18, color: colors.textSec, padding: 8 }}>›</Text></TouchableOpacity>
+          </View>
+          <View style={{ flexDirection: "row", marginBottom: 4 }}>
+            {DAY_NAMES.map(d => <View key={d} style={{ flex: 1, alignItems: "center" }}><Text style={{ fontSize: 10, color: colors.textSec }}>{d}</Text></View>)}
+          </View>
+          <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
+            {Array(getFirstDayOfMonth(evPickerYear, evPickerMonth)).fill(null).map((_, i) => <View key={"ee"+i} style={{ width: "14.28%", height: 36 }} />)}
+            {Array.from({ length: getDaysInMonth(evPickerYear, evPickerMonth) }, (_, i) => {
+              const d = i + 1;
+              const ds = evPickerYear + "-" + String(evPickerMonth + 1).padStart(2, "0") + "-" + String(d).padStart(2, "0");
+              const sel = ds === evDate;
+              return <TouchableOpacity key={d} onPress={() => { haptic("light"); setEvDate(ds); }} style={{ width: "14.28%", height: 36, justifyContent: "center", alignItems: "center" }}><View style={{ width: 30, height: 30, borderRadius: 8, justifyContent: "center", alignItems: "center", backgroundColor: sel ? colors.primaryBg : "transparent", borderWidth: sel ? 2 : 0, borderColor: colors.primary }}><Text style={{ fontSize: 13, color: sel ? colors.primary : colors.text }}>{d}</Text></View></TouchableOpacity>;
+            })}
+          </View>
+          <TouchableOpacity onPress={() => { haptic("success"); setShowEvDatePicker(false); }} style={{ marginTop: 16, paddingVertical: 12, borderRadius: 10, alignItems: "center", backgroundColor: colors.primary }}><Text style={{ fontSize: 14, fontWeight: "700", color: "#fff" }}>확인</Text></TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
   </KeyboardAvoidingView></SafeAreaView>);
 }

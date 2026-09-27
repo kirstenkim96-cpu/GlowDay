@@ -1,7 +1,7 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Switch, Platform, Modal } from 'react-native';
+import React, { useState, useCallback, useRef } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Switch, Platform, Modal, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import GlowModal from '../components/GlowModal';
 import EditProfileScreen from './EditProfileScreen';
 import { useTheme, ACCENTS, AccentKey } from '../constants/ThemeContext';
@@ -24,6 +24,55 @@ const haptic = (t: string) => {
   else Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 };
 
+const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
+const MINUTES = ['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55'];
+const ITEM_H = 44;
+
+function WheelPicker({ data, selected, onSelect, colors }: any) {
+  const loopData = [...data, ...data, ...data];
+  const ref = useRef<FlatList>(null);
+  const idx = data.indexOf(selected);
+  const startIdx = data.length + idx;
+
+  React.useEffect(() => {
+    if (ref.current && idx >= 0) {
+      setTimeout(() => { ref.current?.scrollToIndex({ index: startIdx, animated: false }); }, 100);
+    }
+  }, []);
+
+  return (
+    <View style={{ height: ITEM_H * 3, overflow: "hidden", width: 70 }}>
+      <View style={{ position: "absolute", top: ITEM_H, left: 0, right: 0, height: ITEM_H, backgroundColor: colors.primaryBg, borderRadius: 10, zIndex: -1 }} />
+      <FlatList
+        ref={ref}
+        data={loopData}
+        keyExtractor={(item, i) => item + "_" + i}
+        showsVerticalScrollIndicator={false}
+        snapToInterval={ITEM_H}
+        decelerationRate="fast"
+        contentContainerStyle={{ paddingVertical: ITEM_H }}
+        getItemLayout={(_, index) => ({ length: ITEM_H, offset: ITEM_H * index, index })}
+        onMomentumScrollEnd={(e) => {
+          const i = Math.round(e.nativeEvent.contentOffset.y / ITEM_H);
+          const realIdx = i % data.length;
+          if (data[realIdx]) onSelect(data[realIdx]);
+          if (i < data.length || i >= data.length * 2) {
+            ref.current?.scrollToIndex({ index: data.length + realIdx, animated: false });
+          }
+        }}
+        renderItem={({ item }) => {
+          const isSel = item === selected;
+          return (
+            <View style={{ height: ITEM_H, justifyContent: "center", alignItems: "center" }}>
+              <Text style={{ fontSize: isSel ? 18 : 14, fontWeight: isSel ? "700" : "400", color: isSel ? colors.primary : colors.textLight }}>{item}</Text>
+            </View>
+          );
+        }}
+      />
+    </View>
+  );
+}
+
 function SettingRow({ icon, label, sub, right, colors }: any) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}>
@@ -45,10 +94,11 @@ function SectionLabel({ text, colors }: { text: string; colors: any }) {
 
 export default function SettingsScreen() {
   const { mode, isDark, accentKey, setMode, setAccent, colors } = useTheme();
+  const navigation = useNavigation<any>();
   const [amNotif, setAmNotif] = useState(true);
   const [pmNotif, setPmNotif] = useState(true);
   const [waterReminder, setWaterReminder] = useState(false);
-  const [waterInterval, setWaterInterval] = useState(2);
+  const [waterIntervalMin, setWaterIntervalMin] = useState(120);
   const [amTime, setAmTime] = useState('07:00');
   const [pmTime, setPmTime] = useState('21:00');
   const [streak, setStreak] = useState<any>(null);
@@ -58,14 +108,20 @@ export default function SettingsScreen() {
   const [profileEmoji, setProfileEmoji] = useState('🌸');
   const [modal, setModal] = useState<any>({ visible: false, title: '' });
   const [showEditProfile, setShowEditProfile] = useState(false);
+  const [showRoutineList, setShowRoutineList] = useState(false);
+  const [showEventList, setShowEventList] = useState(false);
+  const [allRoutines, setAllRoutines] = useState<any[]>([]);
+  const [allEvents, setAllEvents] = useState<any[]>([]);
   const [showAlarmSetting, setShowAlarmSetting] = useState<string | null>(null);
+  const [pickerHour, setPickerHour] = useState('07');
+  const [pickerMin, setPickerMin] = useState('00');
 
   const load = useCallback(async () => {
     if (IS_WEB) { setStreak({ current_streak: 5, longest_streak: 14, protection_used: 0 }); return; }
     try {
       const st = await dbFns.getStreak(); setStreak(st);
-      const rts = await dbFns.getAllRoutines(); setRoutineCount(rts.length);
-      const evts = await dbFns.getAllEvents(); setEventCount(evts.length);
+      const rts = await dbFns.getAllRoutines(); setRoutineCount(rts.length); setAllRoutines(rts);
+      const evts = await dbFns.getAllEvents(); setEventCount(evts.length); setAllEvents(evts);
       const amVal = await dbFns.getSetting('am_notif');
       const pmVal = await dbFns.getSetting('pm_notif');
       setAmNotif(amVal !== '0'); setPmNotif(pmVal !== '0');
@@ -74,9 +130,9 @@ export default function SettingsScreen() {
       if (nick) setNickname(nick);
       if (pEmoji) setProfileEmoji(pEmoji);
       const wr = await dbFns.getSetting('water_reminder');
-      const wi = await dbFns.getSetting('water_interval');
+      const wi = await dbFns.getSetting('water_interval_min');
       setWaterReminder(wr === '1');
-      if (wi) setWaterInterval(parseInt(wi));
+      if (wi) setWaterIntervalMin(parseInt(wi));
       const at = await dbFns.getSetting('am_time'); if (at) setAmTime(at);
       const pt = await dbFns.getSetting('pm_time'); if (pt) setPmTime(pt);
     } catch (e) { console.error(e); }
@@ -102,6 +158,36 @@ export default function SettingsScreen() {
     setMode(next);
   };
 
+  const openTimePicker = (type: string) => {
+    const time = type === 'am' ? amTime : pmTime;
+    setPickerHour(time.split(':')[0]);
+    setPickerMin(time.split(':')[1]);
+    setShowAlarmSetting(type);
+  };
+
+  const saveTimePicker = () => {
+    const time = pickerHour + ':' + pickerMin;
+    if (showAlarmSetting === 'am') { setAmTime(time); if (dbFns) dbFns.setSetting('am_time', time); }
+    else if (showAlarmSetting === 'pm') { setPmTime(time); if (dbFns) dbFns.setSetting('pm_time', time); }
+    haptic('success');
+    setShowAlarmSetting(null);
+  };
+
+  const changeWaterInterval = (delta: number) => {
+    haptic('light');
+    const next = Math.max(30, waterIntervalMin + delta);
+    setWaterIntervalMin(next);
+    if (dbFns) dbFns.setSetting('water_interval_min', String(next));
+  };
+
+  const formatInterval = (min: number) => {
+    const h = Math.floor(min / 60);
+    const m = min % 60;
+    if (h === 0) return m + '분';
+    if (m === 0) return h + '시간';
+    return h + '시간 ' + m + '분';
+  };
+
   const handleExportData = async () => {
     if (IS_WEB) return;
     haptic('light');
@@ -118,8 +204,6 @@ export default function SettingsScreen() {
         const path = FileSystem.documentDirectory + 'glowday_backup.json';
         await FileSystem.writeAsStringAsync(path, backup);
         await Sharing.shareAsync(path, { mimeType: 'application/json', dialogTitle: 'GlowDay 백업' });
-      } else {
-        setModal({ visible: true, emoji: '📤', title: '백업 준비 완료', message: '공유 기능을 사용할 수 없어요', buttons: [{ text: '확인', onPress: () => setModal((m: any) => ({ ...m, visible: false })), style: 'primary' }] });
       }
     } catch (e) { console.error(e); }
   };
@@ -177,14 +261,12 @@ export default function SettingsScreen() {
         </TouchableOpacity>
 
         <View style={{ paddingHorizontal: 20 }}>
-          {/* 밝기 설정 */}
           <SectionLabel text="밝기 설정" colors={colors} />
           <TouchableOpacity onPress={cycleTheme} activeOpacity={0.7}>
             <SettingRow colors={colors} icon={modeIcon} label="화면 모드" sub={modeLabel}
               right={<View style={{ backgroundColor: colors.primaryBg, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}><Text style={{ fontSize: 12, fontWeight: '600', color: colors.primary }}>{modeLabel}</Text></View>} />
           </TouchableOpacity>
 
-          {/* 테마 컬러 */}
           <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textSec, marginTop: 14, marginBottom: 10 }}>테마 컬러</Text>
           <View style={{ flexDirection: 'row', gap: 10 }}>
             {ACCENT_KEYS.map(key => {
@@ -201,31 +283,29 @@ export default function SettingsScreen() {
             })}
           </View>
 
-          {/* 알림 설정 */}
           <SectionLabel text="알림 설정" colors={colors} />
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <View style={{ flex: 1 }}>
               <SettingRow colors={colors} icon="☀️" label="아침 루틴 알림" sub={'매일 ' + amTime}
                 right={<Switch value={amNotif} onValueChange={(v) => toggleNotif('am', v)} trackColor={{ false: colors.toggleBg, true: colors.primary + '80' }} thumbColor={amNotif ? colors.primary : '#f4f3f4'} />} />
             </View>
-            {amNotif && <TouchableOpacity onPress={() => setShowAlarmSetting('am')} style={{ padding: 8 }}><Text style={{ fontSize: 14 }}>⚙️</Text></TouchableOpacity>}
+            {amNotif && <TouchableOpacity onPress={() => openTimePicker('am')} style={{ padding: 8 }}><Text style={{ fontSize: 14 }}>⚙️</Text></TouchableOpacity>}
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <View style={{ flex: 1 }}>
               <SettingRow colors={colors} icon="🌙" label="저녁 루틴 알림" sub={'매일 ' + pmTime}
                 right={<Switch value={pmNotif} onValueChange={(v) => toggleNotif('pm', v)} trackColor={{ false: colors.toggleBg, true: colors.primary + '80' }} thumbColor={pmNotif ? colors.primary : '#f4f3f4'} />} />
             </View>
-            {pmNotif && <TouchableOpacity onPress={() => setShowAlarmSetting('pm')} style={{ padding: 8 }}><Text style={{ fontSize: 14 }}>⚙️</Text></TouchableOpacity>}
+            {pmNotif && <TouchableOpacity onPress={() => openTimePicker('pm')} style={{ padding: 8 }}><Text style={{ fontSize: 14 }}>⚙️</Text></TouchableOpacity>}
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <View style={{ flex: 1 }}>
-              <SettingRow colors={colors} icon="💧" label="물 마시기 알림" sub={waterReminder ? waterInterval + '시간 간격' : '꺼짐'}
+              <SettingRow colors={colors} icon="💧" label="물 마시기 알림" sub={waterReminder ? waterIntervalMin + '분 마다' : '꺼짐'}
                 right={<Switch value={waterReminder} onValueChange={(v) => toggleWaterReminder(v)} trackColor={{ false: colors.toggleBg, true: colors.primary + '80' }} thumbColor={waterReminder ? colors.primary : '#f4f3f4'} />} />
             </View>
             {waterReminder && <TouchableOpacity onPress={() => setShowAlarmSetting('water')} style={{ padding: 8 }}><Text style={{ fontSize: 14 }}>⚙️</Text></TouchableOpacity>}
           </View>
 
-          {/* 스트릭 */}
           <SectionLabel text="스트릭" colors={colors} />
           <SettingRow colors={colors} icon="🔥" label="현재 스트릭" sub={`${streak?.current_streak ?? 0}일 연속`}
             right={<Text style={{ fontSize: 16, fontWeight: '700', color: colors.streak }}>{streak?.current_streak ?? 0}일</Text>} />
@@ -234,14 +314,16 @@ export default function SettingsScreen() {
           <SettingRow colors={colors} icon="🛡️" label="스트릭 보호권" sub={streak?.protection_used ? '이번 주 사용 완료' : '이번 주 1회 남음'}
             right={<Text style={{ fontSize: 14, fontWeight: '600', color: streak?.protection_used ? colors.textLight : colors.accent }}>{streak?.protection_used ? '0/1' : '1/1'}</Text>} />
 
-          {/* 루틴 관리 */}
           <SectionLabel text="루틴 관리" colors={colors} />
-          <SettingRow colors={colors} icon="📋" label="등록된 루틴"
-            right={<Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>{routineCount}개</Text>} />
-          <SettingRow colors={colors} icon="📅" label="등록된 일정"
-            right={<Text style={{ fontSize: 14, fontWeight: '600', color: colors.textSec }}>{eventCount}개</Text>} />
+          <TouchableOpacity onPress={() => { haptic("light"); setShowRoutineList(true); }} activeOpacity={0.7}>
+            <SettingRow colors={colors} icon="📋" label="등록된 루틴"
+              right={<Text style={{ fontSize: 14, fontWeight: "600", color: colors.primary }}>{routineCount}개 ›</Text>} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => { haptic("light"); setShowEventList(true); }} activeOpacity={0.7}>
+            <SettingRow colors={colors} icon="📅" label="등록된 일정"
+              right={<Text style={{ fontSize: 14, fontWeight: "600", color: colors.textSec }}>{eventCount}개 ›</Text>} />
+          </TouchableOpacity>
 
-          {/* 데이터 */}
           <SectionLabel text="데이터" colors={colors} />
           <TouchableOpacity onPress={handleExportData} activeOpacity={0.7}>
             <SettingRow colors={colors} icon="📤" label="데이터 내보내기" sub="JSON 형식 백업"
@@ -264,49 +346,108 @@ export default function SettingsScreen() {
         <View style={{ height: 40 }} />
       </ScrollView>
 
-      {/* 알림 시간 설정 모달 */}
-      {showAlarmSetting !== null && (
+      {/* Time Picker Modal (AM/PM) */}
+      {(showAlarmSetting === 'am' || showAlarmSetting === 'pm') && (
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', zIndex: 100 }}>
           <TouchableOpacity style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} activeOpacity={1} onPress={() => setShowAlarmSetting(null)} />
           <View style={{ width: 300, backgroundColor: colors.card, borderRadius: 20, padding: 24 }}>
-            <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 16 }}>
-              {showAlarmSetting === 'am' ? '☀️ 아침 알림 시간' : showAlarmSetting === 'pm' ? '🌙 저녁 알림 시간' : '💧 물 마시기 간격'}
+            <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text, textAlign: 'center', marginBottom: 20 }}>
+              {showAlarmSetting === 'am' ? '☀️ 아침 알림 시간' : '🌙 저녁 알림 시간'}
             </Text>
-            {showAlarmSetting === 'water' ? (
-              <View style={{ gap: 8 }}>
-                {[1, 2, 3, 4].map(h => (
-                  <TouchableOpacity key={h} onPress={() => { haptic('light'); setWaterInterval(h); if (dbFns) dbFns.setSetting('water_interval', String(h)); }}
-                    style={{ paddingVertical: 12, borderRadius: 10, alignItems: 'center', backgroundColor: waterInterval === h ? colors.primaryBg : colors.toggleBg, borderWidth: waterInterval === h ? 2 : 0, borderColor: colors.primary }}>
-                    <Text style={{ fontSize: 14, fontWeight: '600', color: waterInterval === h ? colors.primary : colors.textSec }}>{h}시간마다</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            ) : (
-              <View style={{ gap: 8 }}>
-                {(showAlarmSetting === 'am'
-                  ? ['06:00', '06:30', '07:00', '07:30', '08:00', '08:30', '09:00']
-                  : ['19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00']
-                ).map(t => {
-                  const cur = showAlarmSetting === 'am' ? amTime : pmTime;
-                  return (
-                    <TouchableOpacity key={t} onPress={() => {
-                      haptic('light');
-                      if (showAlarmSetting === 'am') { setAmTime(t); if (dbFns) dbFns.setSetting('am_time', t); }
-                      else { setPmTime(t); if (dbFns) dbFns.setSetting('pm_time', t); }
-                    }} style={{ paddingVertical: 12, borderRadius: 10, alignItems: 'center', backgroundColor: cur === t ? colors.primaryBg : colors.toggleBg, borderWidth: cur === t ? 2 : 0, borderColor: colors.primary }}>
-                      <Text style={{ fontSize: 14, fontWeight: '600', color: cur === t ? colors.primary : colors.textSec }}>{t}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            )}
-            <TouchableOpacity onPress={() => { haptic('success'); setShowAlarmSetting(null); }} activeOpacity={0.8}
-              style={{ marginTop: 16, paddingVertical: 13, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+              <WheelPicker data={HOURS} selected={pickerHour} onSelect={setPickerHour} colors={colors} />
+              <Text style={{ fontSize: 24, fontWeight: '700', color: colors.text }}>:</Text>
+              <WheelPicker data={MINUTES} selected={pickerMin} onSelect={setPickerMin} colors={colors} />
+            </View>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary, textAlign: 'center', marginBottom: 16 }}>{pickerHour}:{pickerMin}</Text>
+            <TouchableOpacity onPress={saveTimePicker} activeOpacity={0.8}
+              style={{ paddingVertical: 13, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center' }}>
               <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff' }}>확인</Text>
             </TouchableOpacity>
           </View>
         </View>
       )}
+
+      {/* Water Interval Modal */}
+      {showAlarmSetting === 'water' && (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', zIndex: 100 }}>
+          <TouchableOpacity style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} activeOpacity={1} onPress={() => setShowAlarmSetting(null)} />
+          <View style={{ width: 300, backgroundColor: colors.card, borderRadius: 20, padding: 24, alignItems: 'center' }}>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 20 }}>💧 물 마시기 간격</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 20, marginBottom: 16 }}>
+              <TouchableOpacity onPress={() => changeWaterInterval(-30)}
+                style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: colors.toggleBg, justifyContent: 'center', alignItems: 'center' }}>
+                <Text style={{ fontSize: 22, color: colors.textSec }}>−</Text>
+              </TouchableOpacity>
+              <View style={{ alignItems: 'center' }}>
+                <Text style={{ fontSize: 22, fontWeight: '700', color: colors.primary }}>{formatInterval(waterIntervalMin)}</Text>
+              </View>
+              <TouchableOpacity onPress={() => changeWaterInterval(30)}
+                style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: colors.primaryBg, justifyContent: 'center', alignItems: 'center' }}>
+                <Text style={{ fontSize: 22, color: colors.primary }}>+</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <TouchableOpacity onPress={() => { haptic('success'); setShowAlarmSetting(null); }} activeOpacity={0.8}
+              style={{ width: '100%', paddingVertical: 13, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center' }}>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff' }}>확인</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+      {/* Routine List Modal */}
+      <Modal visible={showRoutineList} transparent animationType="slide">
+        <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.4)" }}>
+          <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setShowRoutineList(false)} />
+          <View style={{ backgroundColor: colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40, maxHeight: "70%" }}>
+            <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: "center", marginBottom: 16 }} />
+            <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text, marginBottom: 16 }}>📋 등록된 루틴 ({routineCount}개)</Text>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {allRoutines.map(r => {
+                const catMap: any = { skincare: "스킨케어", supplement: "영양제", haircare: "헤어케어", bodycare: "바디케어" };
+                const days = JSON.parse(r.repeat_days || "[]");
+                const dayLabel = days.length === 7 ? "매일" : days.length === 5 && !days.includes(0) && !days.includes(6) ? "주중" : days.map((d: number) => ["일","월","화","수","목","금","토"][d]).join(",");
+                return (
+                  <TouchableOpacity key={r.id} onPress={() => { setShowRoutineList(false); setTimeout(() => { navigation.navigate("Add", { editRoutine: r }); }, 300); }} activeOpacity={0.7}
+                    style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}>
+                    <Text style={{ fontSize: 16 }}>{r.icon || "🌸"}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 14, fontWeight: "500", color: colors.text }}>{r.name}</Text>
+                      <Text style={{ fontSize: 11, color: colors.textSec }}>{r.time_slot === "AM" ? "아침" : "저녁"} · {catMap[r.category] || r.category} · {dayLabel}</Text>
+                    </View>
+                    <Text style={{ fontSize: 12, color: colors.textLight }}>›</Text>
+                  </TouchableOpacity>
+                );
+              })}
+              {allRoutines.length === 0 && <Text style={{ fontSize: 13, color: colors.textSec, textAlign: "center", paddingVertical: 20 }}>등록된 루틴이 없어요</Text>}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+      {/* Event List Modal */}
+      <Modal visible={showEventList} transparent animationType="slide">
+        <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.4)" }}>
+          <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setShowEventList(false)} />
+          <View style={{ backgroundColor: colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40, maxHeight: "70%" }}>
+            <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: "center", marginBottom: 16 }} />
+            <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text, marginBottom: 16 }}>📅 등록된 일정 ({eventCount}개)</Text>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {allEvents.map(ev => (
+                <TouchableOpacity key={ev.id} onPress={() => { setShowEventList(false); setTimeout(() => { navigation.navigate("Add", { editEvent: ev }); }, 300); }} activeOpacity={0.7}
+                  style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}>
+                  <Text style={{ fontSize: 16 }}>{ev.category === "salon" ? "💇" : ev.category === "clinic" ? "🏥" : "🌸"}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 14, fontWeight: "500", color: colors.text }}>{ev.title}</Text>
+                    <Text style={{ fontSize: 11, color: colors.textSec }}>{ev.date} {ev.time}{ev.memo ? " · " + ev.memo : ""}</Text>
+                  </View>
+                  <Text style={{ fontSize: 12, color: colors.textLight }}>›</Text>
+                </TouchableOpacity>
+              ))}
+              {allEvents.length === 0 && <Text style={{ fontSize: 13, color: colors.textSec, textAlign: "center", paddingVertical: 20 }}>등록된 일정이 없어요</Text>}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
