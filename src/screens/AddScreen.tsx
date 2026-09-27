@@ -11,7 +11,8 @@ import { today, DAY_NAMES, getDaysInMonth, getFirstDayOfMonth } from '../utils/d
 const IS_WEB = Platform.OS === 'web';
 let dbFns: any = null;
 let Haptics: any = null;
-if (!IS_WEB) { dbFns = require('../db/database'); Haptics = require('expo-haptics'); }
+let notifUtils: any = null;
+if (!IS_WEB) { dbFns = require('../db/database'); Haptics = require('expo-haptics'); notifUtils = require('../utils/notifications'); }
 const haptic = (t: string) => { if (!Haptics) return; if (t === 'success') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); else if (t === 'medium') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); else Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); };
 const DN = ['일','월','화','수','목','금','토'];
 const EVENT_CATS = ['salon','clinic','other'] as const;
@@ -84,12 +85,15 @@ export default function AddScreen() {
   const saveEvent = async () => {
     if (!evTitle.trim()) { setModal({ visible: true, emoji: '📝', title: '일정 이름을 입력해주세요', buttons: [{ text: '확인', onPress: () => setModal((m: any) => ({ ...m, visible: false })), style: 'primary' }] }); return; }
     if (!IS_WEB) {
+      const eventId = isEditEvent ? ee.id : 'e_' + Date.now();
       if (isEditEvent) {
         const db = dbFns.getDB();
         await db.runAsync('UPDATE beauty_events SET title=?, category=?, date=?, time=?, memo=? WHERE id=?', [evTitle.trim(), evCat, evDate, evTime, evMemo, ee.id]);
       } else {
-        await dbFns.addEvent({ id: 'e_' + Date.now(), title: evTitle.trim(), category: evCat, date: evDate, time: evTime, remind_before: 60, memo: evMemo, recurring: 0 });
+        await dbFns.addEvent({ id: eventId, title: evTitle.trim(), category: evCat, date: evDate, time: evTime, remind_before: 60, memo: evMemo, recurring: 0 });
       }
+      // Schedule push notification 1hr before event
+      try { await notifUtils.scheduleEventReminder({ id: eventId, title: evTitle.trim(), date: evDate, time: evTime, category: evCat }); } catch {}
     }
     haptic('success');
     setModal({ visible: true, emoji: '📅', title: isEditEvent ? '일정 수정 완료!' : '일정 추가 완료!', buttons: [{ text: '확인', onPress: () => { setModal((m: any) => ({ ...m, visible: false })); setEvCat('salon'); setEvTitle(''); setEvDate(today()); setEvTime('14:00'); setEvMemo(''); nav.navigate('Home'); }, style: 'primary' }] });
@@ -97,15 +101,15 @@ export default function AddScreen() {
 
   const delRoutine = () => { if (!isEditRoutine) return; setModal({ visible: true, emoji: '🗑️', title: '"' + er.name + '" 삭제할까요?', buttons: [{ text: '취소', onPress: () => setModal((m: any) => ({ ...m, visible: false })), style: 'default' }, { text: '삭제', onPress: async () => { setModal((m: any) => ({ ...m, visible: false })); if (!IS_WEB) await dbFns.deleteRoutine(er.id); haptic('medium'); nav.navigate('Home'); }, style: 'danger' }] }); };
 
-  const delEvent = () => { if (!isEditEvent) return; setModal({ visible: true, emoji: '🗑️', title: '"' + ee.title + '" 삭제할까요?', buttons: [{ text: '취소', onPress: () => setModal((m: any) => ({ ...m, visible: false })), style: 'default' }, { text: '삭제', onPress: async () => { setModal((m: any) => ({ ...m, visible: false })); if (!IS_WEB) await dbFns.deleteEvent(ee.id); haptic('medium'); nav.navigate('Home'); }, style: 'danger' }] }); };
+  const delEvent = () => { if (!isEditEvent) return; setModal({ visible: true, emoji: '🗑️', title: '"' + ee.title + '" 삭제할까요?', buttons: [{ text: '취소', onPress: () => setModal((m: any) => ({ ...m, visible: false })), style: 'default' }, { text: '삭제', onPress: async () => { setModal((m: any) => ({ ...m, visible: false })); if (!IS_WEB) { await dbFns.deleteEvent(ee.id); try { await notifUtils.cancelEventReminder(ee.id); } catch {} } haptic('medium'); nav.navigate('Home'); }, style: 'danger' }] }); };
 
   const ok = cat && name.trim() && days.length > 0;
   const COLORS = getAvailableColors();
   const ICONS = getAvailableIcons();
 
-  return (<SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={['top']}><KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+  return (<SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={['top']}><KeyboardAvoidingView style={{ flex: 1 }} behavior="padding" keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
     <GlowModal visible={modal.visible} emoji={modal.emoji} title={modal.title} message={modal.message} buttons={modal.buttons} onClose={() => setModal((m: any) => ({ ...m, visible: false }))} />
-    <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 40 }}>
+    <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive" contentContainerStyle={{ paddingBottom: 120 }}>
       <View style={{ paddingHorizontal: 20, paddingTop: 12 }}><Text style={{ fontSize: 22, fontWeight: '700', color: colors.text }}>{isEditRoutine ? '루틴 수정' : isEditEvent ? '일정 수정' : '새로 추가'}</Text></View>
 
       {/* Mode Toggle - only when not editing */}

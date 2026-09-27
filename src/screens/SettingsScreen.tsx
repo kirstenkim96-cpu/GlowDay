@@ -11,9 +11,11 @@ let dbFns: any = null;
 let Haptics: any = null;
 let Sharing: any = null;
 let FileSystem: any = null;
+let notifUtils: any = null;
 if (!IS_WEB) {
   dbFns = require('../db/database');
   Haptics = require('expo-haptics');
+  notifUtils = require('../utils/notifications');
   try { Sharing = require('expo-sharing'); } catch {}
   try { FileSystem = require('expo-file-system'); } catch {}
 }
@@ -143,7 +145,10 @@ export default function SettingsScreen() {
   const toggleNotif = async (type: 'am' | 'pm', value: boolean) => {
     haptic('light');
     if (type === 'am') setAmNotif(value); else setPmNotif(value);
-    if (!IS_WEB) await dbFns.setSetting(type === 'am' ? 'am_notif' : 'pm_notif', value ? '1' : '0');
+    if (!IS_WEB) {
+      await dbFns.setSetting(type === 'am' ? 'am_notif' : 'pm_notif', value ? '1' : '0');
+      try { await notifUtils.rescheduleAll(dbFns); } catch {}
+    }
   };
 
   const toggleWaterReminder = async (value: boolean) => {

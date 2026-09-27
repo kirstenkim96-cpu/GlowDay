@@ -17,15 +17,18 @@ let openDatabase: any = null;
 let loadAll: any = null;
 let setupCategories: any = null;
 let getSetting: any = null;
+let rescheduleAll: any = null;
 
 if (Platform.OS !== 'web') {
   const db = require('./src/db/database');
   const store = require('./src/store/useAppStore');
   const catInit = require('./src/db/initCategories');
+  const notif = require('./src/utils/notifications');
   openDatabase = db.openDatabase;
   loadAll = () => store.useAppStore.getState().loadAll();
   setupCategories = catInit.setupCategories;
   getSetting = db.getSetting;
+  rescheduleAll = () => notif.rescheduleAll(db);
 }
 
 function AppContent() {
@@ -56,7 +59,11 @@ function AppContent() {
         console.log('Step 6: Data loaded');
         
         setReady(true);
-        
+
+        setStatus('알림 설정...');
+        console.log('Step 6.5: Setting up notifications...');
+        try { if (rescheduleAll) await rescheduleAll(); } catch (e) { console.log('Notification setup skipped:', e); }
+
         setStatus('온보딩 체크...');
         const done = await getSetting('onboarding_done');
         if (!done) setShowOnboarding(true);
