@@ -46,6 +46,9 @@ export default function HomeScreen() {
   const [logs,setLogs]=useState<Record<string,boolean>>({});
   const [streak,setStreak]=useState(0);
   const [events,setEvents]=useState<any[]>([]);
+  const [waterCups,setWaterCups]=useState(0);
+  const [waterGoal,setWaterGoal]=useState(8);
+  const [showWaterGoal,setShowWaterGoal]=useState(false);
   const [modal,setModal]=useState<any>({visible:false,title:''});
   const [showCeleb,setShowCeleb]=useState(false);
   const [newBadge,setNewBadge]=useState<any>(null);
@@ -57,6 +60,8 @@ export default function HomeScreen() {
     try{
       const[r,l,s]=await Promise.all([dbFns.getRoutinesForDate(ts),dbFns.getLogsForDate(ts),dbFns.getStreak()]);
       setRoutines(r);setLogs(l);setStreak(s?.current_streak??0);
+      const wc=await dbFns.getWaterLog(ts);setWaterCups(wc);
+      const wg=await dbFns.getSetting('water_goal');if(wg)setWaterGoal(parseInt(wg));
       const allEvents=await dbFns.getAllEvents();
       const upcoming=allEvents.filter((e:any)=>e.date>=ts).sort((a:any,b:any)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time));
       setEvents(upcoming.slice(0, 5));
@@ -144,6 +149,30 @@ export default function HomeScreen() {
       <View style={{paddingHorizontal:20,paddingTop:12}}>
         {cur.length===0?(<View style={{alignItems:'center',paddingVertical:40,gap:8}}><Text style={{fontSize:40}}>{slot==='AM'?'☀️':'🌙'}</Text><Text style={{fontSize:14,color:colors.textSec}}>{slot==='AM'?'아침':'저녁'} 루틴이 없어요</Text><TouchableOpacity onPress={()=>nav.navigate('Add',{editRoutine:null})} style={{marginTop:8,backgroundColor:colors.primaryBg,paddingHorizontal:20,paddingVertical:10,borderRadius:12}}><Text style={{fontSize:13,fontWeight:'600',color:colors.primary}}>+ 루틴 추가하기</Text></TouchableOpacity></View>):(cur.map(r=>(<RoutineCard key={r.id} name={r.name} category={r.category} done={!!logs[r.id]} onToggle={()=>toggle(r.id)} onEdit={()=>edit(r)} colors={colors}/>)))}
       </View>
+      {/* Water Tracker */}
+      <View style={{paddingHorizontal:20,paddingTop:12}}>
+        <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+          <Text style={{fontSize:16,fontWeight:'700',color:colors.text}}>물 마시기</Text>
+          <TouchableOpacity onPress={()=>{haptic('light');setShowWaterGoal(true);}} style={{flexDirection:'row',alignItems:'center',gap:4}}>
+            <Text style={{fontSize:13,fontWeight:'500',color:waterCups>=waterGoal?'#1D9E75':colors.primary}}>{waterCups}/{waterGoal}잔</Text>
+            <Text style={{fontSize:10,color:colors.textLight}}>⚙️</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={{backgroundColor:colors.card,borderRadius:14,borderWidth:1,borderColor:colors.border,padding:14}}>
+          <View style={{flexDirection:'row',justifyContent:'center',flexWrap:'wrap',gap:8,marginBottom:14}}>
+            {Array.from({length:waterGoal},(_,i)=>{const filled=i<waterCups;return(<View key={i} style={{width:36,height:36,borderRadius:10,backgroundColor:filled?(waterCups>=waterGoal?'#1D9E75':colors.primary):colors.toggleBg,borderWidth:filled?0:1.5,borderColor:colors.border,borderStyle:filled?'solid':'dashed',justifyContent:'center',alignItems:'center'}}><Text style={{fontSize:16,opacity:filled?1:0.3}}>💧</Text></View>);})}
+          </View>
+          <View style={{flexDirection:'row',gap:8}}>
+            <TouchableOpacity onPress={async()=>{if(waterCups<waterGoal+4){haptic('light');const nc=waterCups+1;setWaterCups(nc);if(dbFns)await dbFns.setWaterLog(ts,nc);if(nc>=waterGoal)haptic('success');}}} activeOpacity={0.7} style={{flex:1,paddingVertical:11,borderRadius:10,backgroundColor:colors.primary,alignItems:'center'}}>
+              <Text style={{fontSize:14,fontWeight:'600',color:'#fff'}}>+ 한 잔</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={async()=>{if(waterCups>0){haptic('light');const nc=waterCups-1;setWaterCups(nc);if(dbFns)await dbFns.setWaterLog(ts,nc);}}} activeOpacity={0.7} style={{width:48,paddingVertical:11,borderRadius:10,backgroundColor:colors.toggleBg,alignItems:'center'}}>
+              <Text style={{fontSize:14,color:colors.textSec}}>−</Text>
+            </TouchableOpacity>
+          </View>
+          {waterCups>=waterGoal?(<View style={{marginTop:10,padding:8,backgroundColor:'#1D9E7512',borderRadius:8,alignItems:'center'}}><Text style={{fontSize:12,fontWeight:'600',color:'#1D9E75'}}>오늘 목표 달성 완료! ✨</Text></View>):waterCups>0?(<Text style={{fontSize:12,color:colors.textSec,textAlign:'center',marginTop:10}}>{waterGoal-waterCups}잔 더 마시면 오늘 목표 달성! 💪</Text>):null}
+        </View>
+      </View>
       {events.length > 0 && (
         <View style={{paddingHorizontal:20,paddingTop:8}}>
           <Text style={{fontSize:16,fontWeight:'700',color:colors.text,marginBottom:10}}>📌 뷰티 일정</Text>
@@ -169,5 +198,18 @@ export default function HomeScreen() {
       )}
       <View style={{height:40}}/>
     </ScrollView>
+    {showWaterGoal&&(<View style={{position:'absolute',top:0,left:0,right:0,bottom:0,backgroundColor:'rgba(0,0,0,0.4)',justifyContent:'center',alignItems:'center',zIndex:100}}>
+      <TouchableOpacity style={{position:'absolute',top:0,left:0,right:0,bottom:0}} activeOpacity={1} onPress={()=>setShowWaterGoal(false)}/>
+      <View style={{width:280,backgroundColor:colors.card,borderRadius:20,padding:24,alignItems:'center'}}>
+        <Text style={{fontSize:18,fontWeight:'700',color:colors.text,marginBottom:16}}>💧 목표 설정</Text>
+        <Text style={{fontSize:13,color:colors.textSec,marginBottom:16}}>하루 목표 잔 수를 선택하세요</Text>
+        <View style={{flexDirection:'row',alignItems:'center',gap:20,marginBottom:20}}>
+          <TouchableOpacity onPress={()=>{if(waterGoal>1){haptic('light');const ng=waterGoal-1;setWaterGoal(ng);if(dbFns)dbFns.setSetting('water_goal',String(ng));}}} style={{width:40,height:40,borderRadius:12,backgroundColor:colors.toggleBg,justifyContent:'center',alignItems:'center'}}><Text style={{fontSize:20,color:colors.textSec}}>−</Text></TouchableOpacity>
+          <Text style={{fontSize:32,fontWeight:'700',color:colors.primary}}>{waterGoal}</Text>
+          <TouchableOpacity onPress={()=>{if(waterGoal<15){haptic('light');const ng=waterGoal+1;setWaterGoal(ng);if(dbFns)dbFns.setSetting('water_goal',String(ng));}}} style={{width:40,height:40,borderRadius:12,backgroundColor:colors.primaryBg,justifyContent:'center',alignItems:'center'}}><Text style={{fontSize:20,color:colors.primary}}>+</Text></TouchableOpacity>
+        </View>
+        <TouchableOpacity onPress={()=>{haptic('success');setShowWaterGoal(false);}} activeOpacity={0.8} style={{width:'100%',paddingVertical:13,borderRadius:12,backgroundColor:colors.primary,alignItems:'center'}}><Text style={{fontSize:14,fontWeight:'700',color:'#fff'}}>확인</Text></TouchableOpacity>
+      </View>
+    </View>)}
   </SafeAreaView>);
 }
