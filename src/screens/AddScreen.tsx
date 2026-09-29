@@ -109,7 +109,7 @@ export default function AddScreen() {
 
   return (<SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={['top']}><KeyboardAvoidingView style={{ flex: 1 }} behavior="padding" keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
     <GlowModal visible={modal.visible} emoji={modal.emoji} title={modal.title} message={modal.message} buttons={modal.buttons} onClose={() => setModal((m: any) => ({ ...m, visible: false }))} />
-    <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive" contentContainerStyle={{ paddingBottom: 120 }}>
+    <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive" contentContainerStyle={{ paddingBottom: 200 }}>
       <View style={{ paddingHorizontal: 20, paddingTop: 12 }}><Text style={{ fontSize: 22, fontWeight: '700', color: colors.text }}>{isEditRoutine ? '루틴 수정' : isEditEvent ? '일정 수정' : '새로 추가'}</Text></View>
 
       {/* Mode Toggle - only when not editing */}

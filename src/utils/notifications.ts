@@ -85,7 +85,7 @@ export async function scheduleRoutineReminders(
         ...(Platform.OS === 'android' ? { channelId: 'routine-reminders' } : {}),
       },
       trigger: {
-        type: 'daily',
+        type: Notifications.SchedulableTriggerInputTypes.DAILY,
         hour: h,
         minute: m,
       },
@@ -106,7 +106,7 @@ export async function scheduleRoutineReminders(
         ...(Platform.OS === 'android' ? { channelId: 'routine-reminders' } : {}),
       },
       trigger: {
-        type: 'daily',
+        type: Notifications.SchedulableTriggerInputTypes.DAILY,
         hour: h,
         minute: m,
       },
@@ -151,7 +151,7 @@ export async function scheduleEventReminder(event: {
       ...(Platform.OS === 'android' ? { channelId: 'event-reminders' } : {}),
     },
     trigger: {
-      type: 'date',
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
       date: reminderDate,
     },
   });

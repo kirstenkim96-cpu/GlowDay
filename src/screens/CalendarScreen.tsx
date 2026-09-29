@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Platform, Modal } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Platform, Modal, KeyboardAvoidingView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Categories } from '../constants/theme';
@@ -338,6 +338,7 @@ export default function CalendarScreen() {
 
       {/* Add Cycle Modal */}
       <Modal visible={showAddCycle} transparent animationType="slide">
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
           <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setShowAddCycle(false)} />
           <View style={{ backgroundColor: colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 }}>
@@ -376,10 +377,12 @@ export default function CalendarScreen() {
             </TouchableOpacity>
           </View>
         </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Edit Cycle Modal */}
       <Modal visible={showEditCycle} transparent animationType="slide">
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
           <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setShowEditCycle(false)} />
           <View style={{ backgroundColor: colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 }}>
@@ -413,6 +416,7 @@ export default function CalendarScreen() {
             </TouchableOpacity>
           </View>
         </View>
+        </KeyboardAvoidingView>
       </Modal>
       {/* Date Picker Modal */}
       <Modal visible={showDatePicker} transparent animationType="fade">

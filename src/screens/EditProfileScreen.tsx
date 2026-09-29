@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Platform, KeyboardAvoidingView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../constants/ThemeContext';
 import GlowModal from '../components/GlowModal';
@@ -42,7 +42,8 @@ export default function EditProfileScreen({ onDone }: Props) {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
       <GlowModal visible={modal.visible} emoji={modal.emoji} title={modal.title} buttons={modal.buttons} onClose={() => setModal((m: any) => ({ ...m, visible: false }))} />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 24 }}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 24 }} keyboardShouldPersistTaps="handled">
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
           <Text style={{ fontSize: 22, fontWeight: '700', color: colors.text }}>프로필 수정</Text>
           <TouchableOpacity onPress={onDone}><Text style={{ fontSize: 14, color: colors.textSec }}>취소</Text></TouchableOpacity>
@@ -70,7 +71,9 @@ export default function EditProfileScreen({ onDone }: Props) {
           style={{ paddingVertical: 15, borderRadius: 14, alignItems: 'center', backgroundColor: nickname.trim() ? colors.primary : colors.border }}>
           <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>저장하기</Text>
         </TouchableOpacity>
+        <View style={{ height: 40 }} />
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

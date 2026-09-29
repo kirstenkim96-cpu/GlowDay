@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Platform, ScrollView, Animated, Image } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Platform, ScrollView, Animated, Image, KeyboardAvoidingView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../constants/ThemeContext';
 
@@ -75,8 +75,9 @@ export default function OnboardingScreen({ onComplete }: Props) {
           </View>
         </Animated.View>
       ) : (
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <Animated.View style={{ flex: 1, opacity: fadeAnim, transform: [{ scale: scaleAnim }] }}>
-          <ScrollView contentContainerStyle={{ padding: 28, paddingTop: 40 }} showsVerticalScrollIndicator={false}>
+          <ScrollView contentContainerStyle={{ padding: 28, paddingTop: 40 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             <Text style={{ fontSize: 24, fontWeight: '700', color: colors.text, marginBottom: 6 }}>프로필 설정</Text>
             <Text style={{ fontSize: 14, color: colors.textSec, marginBottom: 30 }}>나만의 프로필을 만들어보세요</Text>
             <View style={{ alignItems: 'center', marginBottom: 30 }}>
@@ -109,6 +110,7 @@ export default function OnboardingScreen({ onComplete }: Props) {
             <View style={{ height: 40 }} />
           </ScrollView>
         </Animated.View>
+        </KeyboardAvoidingView>
       )}
     </SafeAreaView>
   );

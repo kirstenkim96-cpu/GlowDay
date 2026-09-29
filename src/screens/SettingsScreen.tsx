@@ -170,10 +170,14 @@ export default function SettingsScreen() {
     setShowAlarmSetting(type);
   };
 
-  const saveTimePicker = () => {
+  const saveTimePicker = async () => {
     const time = pickerHour + ':' + pickerMin;
-    if (showAlarmSetting === 'am') { setAmTime(time); if (dbFns) dbFns.setSetting('am_time', time); }
-    else if (showAlarmSetting === 'pm') { setPmTime(time); if (dbFns) dbFns.setSetting('pm_time', time); }
+    if (showAlarmSetting === 'am') { setAmTime(time); if (dbFns) await dbFns.setSetting('am_time', time); }
+    else if (showAlarmSetting === 'pm') { setPmTime(time); if (dbFns) await dbFns.setSetting('pm_time', time); }
+    // Reschedule notifications with new time
+    if (dbFns && notifUtils) {
+      try { await notifUtils.rescheduleAll(dbFns); } catch {}
+    }
     haptic('success');
     setShowAlarmSetting(null);
   };
@@ -204,13 +208,24 @@ export default function SettingsScreen() {
       for (const k of ['nickname', 'profile_emoji', 'accent_color', 'theme_mode', 'am_notif', 'pm_notif']) {
         settings[k] = await dbFns.getSetting(k);
       }
-      const backup = JSON.stringify({ routines: allR, events: allE, streak: st, settings }, null, 2);
-      if (Sharing && FileSystem && await Sharing.isAvailableAsync()) {
-        const path = FileSystem.documentDirectory + 'glowday_backup.json';
-        await FileSystem.writeAsStringAsync(path, backup);
-        await Sharing.shareAsync(path, { mimeType: 'application/json', dialogTitle: 'GlowDay 백업' });
+      const backup = JSON.stringify({ routines: allR, events: allE, streak: st, settings, exportDate: new Date().toISOString() }, null, 2);
+
+      // Try sharing directly
+      if (Sharing && FileSystem) {
+        const isAvail = await Sharing.isAvailableAsync();
+        if (isAvail) {
+          const path = FileSystem.documentDirectory + 'glowday_backup.json';
+          await FileSystem.writeAsStringAsync(path, backup);
+          await Sharing.shareAsync(path, { mimeType: 'application/json', dialogTitle: 'GlowDay 백업' });
+          return; // Sharing dialog opened successfully
+        }
       }
-    } catch (e) { console.error(e); }
+      // Fallback: show error if sharing not available
+      setModal({ visible: true, emoji: '⚠️', title: '공유 기능을 사용할 수 없어요', message: '기기에서 파일 공유가 지원되지 않습니다.', buttons: [{ text: '확인', onPress: () => setModal((m: any) => ({ ...m, visible: false })), style: 'primary' }] });
+    } catch (e) {
+      console.error('Export failed:', e);
+      setModal({ visible: true, emoji: '❌', title: '내보내기 실패', message: '데이터 백업 중 오류가 발생했어요.', buttons: [{ text: '확인', onPress: () => setModal((m: any) => ({ ...m, visible: false })), style: 'primary' }] });
+    }
   };
 
   const handleResetStreak = () => {

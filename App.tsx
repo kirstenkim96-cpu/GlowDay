@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, Platform, TextInput } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer, DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import TabNavigator from './src/navigation/TabNavigator';
@@ -60,9 +61,15 @@ function AppContent() {
         
         setReady(true);
 
+        // Restore notification scheduling on app init
         setStatus('알림 설정...');
-        console.log('Step 6.5: Setting up notifications...');
-        try { if (rescheduleAll) await rescheduleAll(); } catch (e) { console.log('Notification setup skipped:', e); }
+        try {
+          console.log('Step 6.5: Scheduling notifications...');
+          await rescheduleAll();
+          console.log('Step 6.6: Notifications scheduled');
+        } catch (notifErr) {
+          console.warn('Notification scheduling failed:', notifErr);
+        }
 
         setStatus('온보딩 체크...');
         const done = await getSetting('onboarding_done');
@@ -108,9 +115,12 @@ function AppContent() {
     : { ...DefaultTheme, colors: { ...DefaultTheme.colors, background: colors.bg, card: colors.bg, border: colors.border } };
 
   return (
-    <NavigationContainer theme={navTheme}>
-      <TabNavigator />
-    </NavigationContainer>
+    <>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+      <NavigationContainer theme={navTheme}>
+        <TabNavigator />
+      </NavigationContainer>
+    </>
   );
 }
 
